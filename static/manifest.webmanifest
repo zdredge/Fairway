@@ -1,0 +1,10 @@
+{
+	"name": "Fairway",
+	"short_name": "Fairway",
+	"description": "A simple, fast golf round tracker.",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#ffffff",
+	"theme_color": "#1a7a3a",
+	"icons": []
+}
