@@ -61,10 +61,10 @@ Five tables. Only raw captured facts are stored; anything derivable is computed 
 - **users** — `id`, `email`, `display_name`, `created_at`. Present from day one so multi-user isn't a painful retrofit later.
 - **courses** — `id`, `name`, `hole_count`, `created_at`.
 - **holes** — `id`, `course_id` (FK), `number`, `par`, `yardage`. A separate table so courses are reusable without duplicating par data.
-- **rounds** — `id`, `user_id` (FK), `course_id` (FK), `tee`, `played_on`, `status`.
-- **scorings** — `id`, `round_id` (FK), `hole_number`, `strokes`, `putts`, `fairway_hit`, `penalties`, `penalty_type`.
+- **rounds** — `id`, `user_id` (FK), `course_id` (FK), `tee`, `played_on`, `hole_count`, `status`. `hole_count` (9 or 18) lives on the round, not just the course, so a 9-hole round can be played on an 18-hole course.
+- **scoring** — `id`, `round_id` (FK), `hole_number`, `strokes`, `putts`, `fairway_hit`, `penalties`, `penalty_type`.
 
-`scorings` field notes:
+`scoring` field notes:
 
 - `fairway_hit` — enum: `hit`, `left`, `right`, `long`, `short`, `na`. `na` on par 3s (no fairway to hit); a miss records its direction.
 - `penalties` — integer count of penalty strokes taken on the hole.
@@ -108,7 +108,7 @@ golf-app/
 │  ├─ lib/
 │  │  ├─ server/                  # server-only — never shipped to the client
 │  │  │  ├─ db/
-│  │  │  │  ├─ schema.ts          # Drizzle: users, courses, holes, rounds, scorings
+│  │  │  │  ├─ schema.ts          # Drizzle: users, courses, holes, rounds, scoring
 │  │  │  │  ├─ index.ts           # db client
 │  │  │  │  └─ queries.ts         # typed data access (getRound, saveScoring, …)
 │  │  │  ├─ auth.ts               # session validation
@@ -135,8 +135,9 @@ golf-app/
 │  ├─ hooks.server.ts             # session auth + CORS (for the Capacitor origin later)
 │  └─ service-worker.ts           # offline caching
 ├─ static/manifest.webmanifest    # PWA install
+├─ scripts/                       # seed + db-check scripts (npm run db:seed / db:check)
 ├─ drizzle.config.ts
-├─ svelte.config.js               # adapter-node now; adapter-static build added later
+├─ vite.config.ts                 # SvelteKit config lives here (new template style); adapter-node now, adapter-static later
 └─ package.json
 ```
 
