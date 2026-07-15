@@ -51,9 +51,3 @@ A phased plan for implementing v1. Each phase is a self-contained, reviewable in
 - The deferred visual-alignment pass on the scoring screens; empty/error/loading states; responsive check on a phone viewport.
 - Swap SQLite → Postgres via config; deploy; add the live URL and screenshots to the README.
 - **Done when:** it's deployed, shareable by link, and the README shows it off.
-
-## Working agreement
-- I implement one phase at a time and pause for your review before moving on.
-- Each phase leaves the app runnable; I won't land a phase that breaks the previous one.
-- Tests go where they earn their keep — heaviest around `workflow.ts` and the stats math.
-- Anything that changes a design decision (schema, endpoints, flow) gets flagged and reflected back into ARCHITECTURE.md.
