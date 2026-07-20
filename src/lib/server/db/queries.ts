@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { db } from './index';
 import {
 	courses,
@@ -90,6 +90,17 @@ export async function listRounds(userId: string): Promise<RoundWithCourse[]> {
 export async function getRound(id: string): Promise<RoundWithDetails | undefined> {
 	return db.query.rounds.findFirst({
 		where: eq(rounds.id, id),
+		with: {
+			course: { with: { holes: { orderBy: holes.number } } },
+			scorings: { orderBy: scoring.holeNumber }
+		}
+	});
+}
+
+/** Completed rounds with their scorings and course holes — the raw input for stats. */
+export async function listCompletedRoundsWithScorings(userId: string): Promise<RoundWithDetails[]> {
+	return db.query.rounds.findMany({
+		where: and(eq(rounds.userId, userId), eq(rounds.status, 'complete')),
 		with: {
 			course: { with: { holes: { orderBy: holes.number } } },
 			scorings: { orderBy: scoring.holeNumber }

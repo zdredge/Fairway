@@ -2,7 +2,11 @@
 // for information about these interfaces
 declare global {
 	namespace App {
-		// interface Error {}
+		interface Error {
+			message: string;
+			/** Field-level validation problems, present on 400 responses. */
+			errors?: string[];
+		}
 		// interface Locals {}
 		// interface PageData {}
 		// interface PageState {}
