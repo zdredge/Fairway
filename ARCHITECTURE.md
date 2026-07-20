@@ -14,7 +14,7 @@ In scope:
 - **Round lifecycle** — start a round on a saved course, 9 or 18 holes, track in-progress vs. complete.
 - **End-of-hole scoring workflow** — a fast, branching question flow (see below).
 - **Round history** — list of completed rounds, each openable to its scorecard.
-- **Stats dashboard** — scoring average, putts per round, fairways in regulation %, greens in regulation %, and scoring average by par-3 / par-4 / par-5.
+- **Stats dashboard** — scoring average, putts per round, fairways hit %, greens in regulation %, and scoring average by par-3 / par-4 / par-5.
 
 Out of scope for v1 (candidate enhancements):
 
@@ -73,7 +73,7 @@ Five tables. Only raw captured facts are stored; anything derivable is computed 
 Derived, never stored:
 
 - **Greens in regulation** — `(strokes - putts) <= (par - 2)`.
-- **Fairways in regulation %**, **putts per round**, **scoring averages** — all aggregated in `stats.ts` from the raw scorings.
+- **Fairways hit %**, **putts per round**, **scoring averages** — all aggregated in `stats.ts` from the raw scorings. (Hitting a fairway is binary — unlike greens there's no "regulation" involved, so the stat is simply the percentage of fairways hit.)
 
 ## Scoring workflow (INSERT IMAGE)
 

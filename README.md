@@ -14,9 +14,9 @@ A simple, fast golf round tracker: log each hole through a streamlined end-of-ho
 - Create reusable courses (name, per-hole par, yardage)
 - Start and track 9 or 18-hole rounds
 - Fast, branching end-of-hole scoring — fairway, putts, penalties, score — surfacing only the follow-ups that matter (miss direction, penalty type)
-- Automatic derivations (greens in regulation, fairways in regulation, and more) computed from raw data, never manually entered
+- Automatic derivations (greens in regulation, fairways hit, and more) computed from raw data, never manually entered
 - Round history and per-round scorecards
-- Stats dashboard: scoring average, putts/round, FIR%, GIR%, and scoring by par type
+- Stats dashboard: scoring average, putts/round, fairways hit %, GIR%, and scoring by par type
 - Installable PWA that keeps working when you lose signal mid-course
 
 ## Tech stack

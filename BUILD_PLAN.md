@@ -35,7 +35,7 @@ A phased plan for implementing v1. Each phase is a self-contained, reviewable in
 - **Done when:** a full round can be played hole-by-hole and every scoring appears correctly in the DB.
 
 ## Phase 6 — Scorecard, history & stats dashboard
-- Round history list, per-round scorecard view, and the stats dashboard (scoring average, putts/round, FIR%, GIR%, by par type).
+- Round history list, per-round scorecard view, and the stats dashboard (scoring average, putts/round, fairways hit %, GIR%, by par type).
 - **Done when:** completed rounds show accurate scorecards and the dashboard numbers match hand-checked values.
 
 ## Phase 7 — Auth
