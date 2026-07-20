@@ -16,6 +16,9 @@ export const penaltyTypeValues = [
 ] as const;
 export type PenaltyType = (typeof penaltyTypeValues)[number];
 
+export const roundStatusValues = ['in_progress', 'complete'] as const;
+export type RoundStatus = (typeof roundStatusValues)[number];
+
 /**
  * The answers gathered by the end-of-hole question flow, in "question shape".
  * Every field starts undefined; the workflow derives the next question from
@@ -43,4 +46,52 @@ export interface ScoringFacts {
 	fairwayHit: FairwayHit;
 	penalties: number;
 	penaltyType: PenaltyType | null;
+}
+
+// ---- Wire (API response) types ----
+// The DB row types live in lib/server and carry Date fields; over JSON those
+// serialize to ISO strings, so the client uses these DTO shapes instead.
+
+export interface ApiCourse {
+	id: string;
+	name: string;
+	holeCount: number;
+	createdAt: string;
+}
+
+export interface ApiHole {
+	id: string;
+	courseId: string;
+	number: number;
+	par: number;
+	yardage: number | null;
+}
+
+export interface ApiCourseWithHoles extends ApiCourse {
+	holes: ApiHole[];
+}
+
+export interface ApiRound {
+	id: string;
+	userId: string;
+	courseId: string;
+	tee: string | null;
+	playedOn: string;
+	holeCount: number;
+	status: RoundStatus;
+}
+
+export interface ApiScoring extends ScoringFacts {
+	id: string;
+	roundId: string;
+	holeNumber: number;
+}
+
+export interface ApiRoundWithCourse extends ApiRound {
+	course: ApiCourse;
+}
+
+export interface ApiRoundDetail extends ApiRound {
+	course: ApiCourseWithHoles;
+	scorings: ApiScoring[];
 }

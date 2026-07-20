@@ -1,13 +1,10 @@
 import { relations } from 'drizzle-orm';
 import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 // Relative import (not $lib) — drizzle-kit and the tsx scripts don't resolve SvelteKit aliases.
-import { fairwayHitValues, penaltyTypeValues } from '../../types';
+import { fairwayHitValues, penaltyTypeValues, roundStatusValues } from '../../types';
 
-export { fairwayHitValues, penaltyTypeValues };
-export type { FairwayHit, PenaltyType } from '../../types';
-
-export const roundStatusValues = ['in_progress', 'complete'] as const;
-export type RoundStatus = (typeof roundStatusValues)[number];
+export { fairwayHitValues, penaltyTypeValues, roundStatusValues };
+export type { FairwayHit, PenaltyType, RoundStatus } from '../../types';
 
 const id = () =>
 	text('id')
