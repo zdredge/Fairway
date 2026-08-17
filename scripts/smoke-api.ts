@@ -157,17 +157,18 @@ async function main() {
 
 	// --- score submission: validation failures ---
 	console.log('POST /api/rounds/[id]/scores — rejections');
-	const belowFloor = await api<ErrorBody>('POST', `/api/rounds/${roundId}/scores`, {
+	// Putts (3) can't exceed the score minus the tee shot (strokes 3 → cap 2).
+	const tooManyPutts = await api<ErrorBody>('POST', `/api/rounds/${roundId}/scores`, {
 		holeNumber: 2,
 		strokes: 3,
 		putts: 3,
 		fairwayHit: 'hit',
 		penalties: 0
 	});
-	checkEqual('below-floor score → 400', belowFloor.status, 400);
+	checkEqual('putts exceeding score − 1 → 400', tooManyPutts.status, 400);
 	check(
-		'floor error names the floor',
-		(belowFloor.data.errors ?? []).some((e) => e.includes('minimum'))
+		'error explains the putts/score relationship',
+		(tooManyPutts.data.errors ?? []).some((e) => e.includes('tee shot'))
 	);
 
 	const par3Fairway = await api<ErrorBody>('POST', `/api/rounds/${roundId}/scores`, {

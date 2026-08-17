@@ -25,18 +25,12 @@ export type RoundStatus = (typeof roundStatusValues)[number];
  * which fields are still missing. Mapped to storage shape by toScoringFacts().
  */
 export interface HoleAnswers {
-	/** "Did you hit the fairway?" — asked on par 4/5 only. */
-	hitFairway?: boolean;
-	/** Follow-up when hitFairway === false. */
-	missDirection?: MissDirection;
-	/** "How many putts?" — always asked. */
-	putts?: number;
-	/** "Any penalties?" — a count; 0 means none. */
-	penalties?: number;
-	/** Follow-up when penalties > 0. */
-	penaltyType?: PenaltyType;
-	/** "Final score?" — asked last so it can be validated against the rest. */
+	/** "Final score?" — asked first; the golfer knows this immediately. */
 	strokes?: number;
+	/** "How many putts?" — always asked; capped at strokes - 1. */
+	putts?: number;
+	/** Fairway result from the pad (par 4/5 only): 'hit' or a miss direction. 'na' is derived on par 3. */
+	fairwayHit?: FairwayHit;
 }
 
 /** The raw facts stored per hole — matches the `scoring` table's captured columns. */

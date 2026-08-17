@@ -1,107 +1,62 @@
 import { describe, expect, test } from 'vitest';
 import type { HoleAnswers, ScoringFacts } from '../types';
 import {
+	answersFromFacts,
 	currentStep,
-	defaultStrokes,
 	isGreenInRegulation,
-	scoreFloor,
+	maxPutts,
 	toScoringFacts,
 	validateScoring
 } from './workflow';
 
-const cleanPar4: HoleAnswers = { hitFairway: true, putts: 2, penalties: 0, strokes: 4 };
+const cleanPar4: HoleAnswers = { strokes: 4, putts: 2, fairwayHit: 'hit' };
 
 function facts(overrides: Partial<ScoringFacts> = {}): ScoringFacts {
 	return { strokes: 4, putts: 2, fairwayHit: 'hit', penalties: 0, penaltyType: null, ...overrides };
 }
 
 describe('currentStep', () => {
-	test('par 4/5 opens on the fairway question', () => {
-		expect(currentStep(4, {})).toBe('fairway');
-		expect(currentStep(5, {})).toBe('fairway');
+	test('every hole opens on the combined score+putts screen', () => {
+		expect(currentStep(3, {})).toBe('score_putts');
+		expect(currentStep(4, {})).toBe('score_putts');
+		expect(currentStep(5, {})).toBe('score_putts');
 	});
 
-	test('par 3 skips the fairway question and opens on putts', () => {
-		expect(currentStep(3, {})).toBe('putts');
+	test('score+putts stays until both are set', () => {
+		expect(currentStep(4, { strokes: 4 })).toBe('score_putts');
+		expect(currentStep(4, { putts: 2 })).toBe('score_putts');
 	});
 
-	test('par 3 never asks fairway or miss direction, even with fairway answers present', () => {
-		expect(currentStep(3, { hitFairway: false, putts: 2, penalties: 0, strokes: 3 })).toBe(
-			'review'
-		);
+	test('par 4/5 asks fairway once score+putts are in', () => {
+		expect(currentStep(4, { strokes: 4, putts: 2 })).toBe('fairway');
+		expect(currentStep(5, { strokes: 5, putts: 2 })).toBe('fairway');
 	});
 
-	test('a fairway miss inserts the miss-direction follow-up', () => {
-		expect(currentStep(4, { hitFairway: false })).toBe('miss_direction');
+	test('par 3 skips the fairway step (score+putts → review)', () => {
+		expect(currentStep(3, { strokes: 3, putts: 2 })).toBe('review');
 	});
 
-	test('a fairway hit goes straight to putts', () => {
-		expect(currentStep(4, { hitFairway: true })).toBe('putts');
-	});
-
-	test('miss direction answered → putts', () => {
-		expect(currentStep(4, { hitFairway: false, missDirection: 'left' })).toBe('putts');
-	});
-
-	test('putts answered → penalties', () => {
-		expect(currentStep(4, { hitFairway: true, putts: 2 })).toBe('penalties');
-	});
-
-	test('penalties > 0 inserts the penalty-type follow-up', () => {
-		expect(currentStep(4, { hitFairway: true, putts: 2, penalties: 1 })).toBe('penalty_type');
-	});
-
-	test('penalties = 0 skips penalty type and goes to score', () => {
-		expect(currentStep(4, { hitFairway: true, putts: 2, penalties: 0 })).toBe('score');
-	});
-
-	test('penalty type answered → score', () => {
-		expect(
-			currentStep(4, { hitFairway: true, putts: 2, penalties: 1, penaltyType: 'water_hazard' })
-		).toBe('score');
-	});
-
-	test('score is always the last question; complete answers → review', () => {
+	test('fairway answered → review', () => {
 		expect(currentStep(4, cleanPar4)).toBe('review');
-		expect(
-			currentStep(5, {
-				hitFairway: false,
-				missDirection: 'right',
-				putts: 2,
-				penalties: 2,
-				penaltyType: 'out_of_bounds',
-				strokes: 8
-			})
-		).toBe('review');
+		expect(currentStep(4, { strokes: 5, putts: 2, fairwayHit: 'left' })).toBe('review');
 	});
 
-	test('a clean par 4 is exactly three questions: fairway, putts, penalties, then score', () => {
-		let answers: HoleAnswers = {};
-		const asked: string[] = [];
-		const scripted: HoleAnswers = cleanPar4;
-		for (const [key, value] of Object.entries(scripted)) {
-			asked.push(currentStep(4, answers));
-			answers = { ...answers, [key]: value };
-		}
-		expect(asked).toEqual(['fairway', 'putts', 'penalties', 'score']);
-		expect(currentStep(4, answers)).toBe('review');
+	test('a clean par 4 is two screens: score+putts, fairway, then review', () => {
+		expect(currentStep(4, {})).toBe('score_putts');
+		expect(currentStep(4, { strokes: 4, putts: 2 })).toBe('fairway');
+		expect(currentStep(4, cleanPar4)).toBe('review');
+	});
+
+	test('a clean par 3 is one input screen: score+putts, then review', () => {
+		expect(currentStep(3, {})).toBe('score_putts');
+		expect(currentStep(3, { strokes: 3, putts: 2 })).toBe('review');
 	});
 });
 
-describe('scoreFloor & defaultStrokes', () => {
-	test('floor is putts + penalties + the tee shot', () => {
-		expect(scoreFloor({ putts: 2, penalties: 1 })).toBe(4);
-		expect(scoreFloor({ putts: 0, penalties: 0 })).toBe(1);
-	});
-
-	test('stepper defaults to par when the floor allows it', () => {
-		expect(defaultStrokes(4, { putts: 2, penalties: 0 })).toBe(4);
-		expect(defaultStrokes(3, { putts: 1, penalties: 0 })).toBe(3);
-	});
-
-	test('stepper defaults to the floor when it exceeds par', () => {
-		expect(defaultStrokes(3, { putts: 3, penalties: 2 })).toBe(6);
-		expect(defaultStrokes(4, { putts: 4, penalties: 0 })).toBe(5);
+describe('maxPutts', () => {
+	test('is the score minus the tee shot', () => {
+		expect(maxPutts(4)).toBe(3);
+		expect(maxPutts(1)).toBe(0); // hole-in-one leaves no room for putts
 	});
 });
 
@@ -130,8 +85,8 @@ describe('isGreenInRegulation', () => {
 });
 
 describe('toScoringFacts', () => {
-	test('par 3 maps to fairwayHit na', () => {
-		expect(toScoringFacts(3, { putts: 2, penalties: 0, strokes: 3 })).toEqual({
+	test('par 3 maps to fairwayHit na, penalties empty', () => {
+		expect(toScoringFacts(3, { strokes: 3, putts: 2 })).toEqual({
 			strokes: 3,
 			putts: 2,
 			fairwayHit: 'na',
@@ -145,22 +100,40 @@ describe('toScoringFacts', () => {
 	});
 
 	test('a miss maps to its direction', () => {
-		expect(
-			toScoringFacts(4, { ...cleanPar4, hitFairway: false, missDirection: 'long' }).fairwayHit
-		).toBe('long');
+		expect(toScoringFacts(4, { strokes: 5, putts: 2, fairwayHit: 'long' }).fairwayHit).toBe('long');
 	});
 
-	test('penalties carry their type; none means null', () => {
-		expect(
-			toScoringFacts(4, { ...cleanPar4, penalties: 1, penaltyType: 'lost_ball', strokes: 6 })
-				.penaltyType
-		).toBe('lost_ball');
-		expect(toScoringFacts(4, cleanPar4).penaltyType).toBeNull();
+	test('penalties always store as 0 / null (not captured in v1)', () => {
+		const f = toScoringFacts(4, cleanPar4);
+		expect(f.penalties).toBe(0);
+		expect(f.penaltyType).toBeNull();
 	});
 
 	test('throws on incomplete answers, naming the pending step', () => {
-		expect(() => toScoringFacts(4, { hitFairway: false })).toThrow(/miss_direction/);
-		expect(() => toScoringFacts(4, { ...cleanPar4, strokes: undefined })).toThrow(/score/);
+		expect(() => toScoringFacts(4, { strokes: 4 })).toThrow(/score_putts/);
+		expect(() => toScoringFacts(4, { strokes: 4, putts: 2 })).toThrow(/fairway/);
+	});
+});
+
+describe('answersFromFacts', () => {
+	// Must be the inverse of toScoringFacts: for any valid stored facts (penalties
+	// empty), rebuilt answers reproduce them and leave the flow on review.
+	const cases: Array<[string, number, ScoringFacts]> = [
+		['par 3 (na)', 3, facts({ strokes: 3, putts: 2, fairwayHit: 'na' })],
+		['par 4 fairway hit', 4, facts()],
+		['par 4 miss left', 4, facts({ strokes: 5, fairwayHit: 'left' })],
+		['par 5 miss long', 5, facts({ strokes: 5, fairwayHit: 'long' })],
+		['par 3 hole-in-one', 3, facts({ strokes: 1, putts: 0, fairwayHit: 'na' })]
+	];
+
+	test.each(cases)('round-trips %s', (_label, par, f) => {
+		const answers = answersFromFacts(par, f);
+		expect(currentStep(par, answers)).toBe('review');
+		expect(toScoringFacts(par, answers)).toEqual(f);
+	});
+
+	test('a par 3 gets no fairway answer', () => {
+		expect(answersFromFacts(3, facts({ strokes: 3, fairwayHit: 'na' })).fairwayHit).toBeUndefined();
 	});
 });
 
@@ -169,13 +142,12 @@ describe('validateScoring', () => {
 		expect(validateScoring(4, facts())).toEqual([]);
 	});
 
-	test('score below the floor is rejected; at the floor is accepted', () => {
-		const withPenalty = facts({ putts: 2, penalties: 1, penaltyType: 'water_hazard' });
-		expect(validateScoring(4, { ...withPenalty, strokes: 3 })).toHaveLength(1);
-		expect(validateScoring(4, { ...withPenalty, strokes: 4 })).toEqual([]);
+	test('putts above score - 1 are rejected; at the cap accepted', () => {
+		expect(validateScoring(4, facts({ strokes: 4, putts: 4 }))).toHaveLength(1);
+		expect(validateScoring(4, facts({ strokes: 4, putts: 3 }))).toEqual([]);
 	});
 
-	test('hole-in-one is valid (floor of 1)', () => {
+	test('hole-in-one is valid (0 putts)', () => {
 		expect(validateScoring(3, facts({ strokes: 1, putts: 0, fairwayHit: 'na' }))).toEqual([]);
 	});
 
@@ -189,26 +161,20 @@ describe('validateScoring', () => {
 		expect(validateScoring(5, facts({ strokes: 5, fairwayHit: 'short' }))).toEqual([]);
 	});
 
-	test('penalty type is required iff penalties were taken', () => {
-		expect(validateScoring(4, facts({ strokes: 5, penalties: 1, penaltyType: null }))).not.toEqual(
-			[]
-		);
-		expect(validateScoring(4, facts({ penalties: 0, penaltyType: 'lost_ball' }))).not.toEqual([]);
-		expect(
-			validateScoring(4, facts({ strokes: 5, penalties: 1, penaltyType: 'unplayable' }))
-		).toEqual([]);
-	});
-
 	test('non-integer and negative inputs are rejected', () => {
 		expect(validateScoring(4, facts({ strokes: 4.5 }))).not.toEqual([]);
 		expect(validateScoring(4, facts({ putts: -1 }))).not.toEqual([]);
-		expect(validateScoring(4, facts({ penalties: -2 }))).not.toEqual([]);
 		expect(validateScoring(2.5, facts())).not.toEqual([]);
 		expect(validateScoring(6, facts())).not.toEqual([]);
 	});
 
-	test('score never drops below putts (GIR protection falls out of the floor)', () => {
-		const bad = facts({ strokes: 2, putts: 3 });
-		expect(validateScoring(4, bad)).not.toEqual([]);
+	test('storage-shape penalty rules still hold (defensive; flow always sends 0/null)', () => {
+		expect(validateScoring(4, facts({ strokes: 6, penalties: 1, penaltyType: null }))).not.toEqual(
+			[]
+		);
+		expect(validateScoring(4, facts({ penalties: 0, penaltyType: 'lost_ball' }))).not.toEqual([]);
+		expect(
+			validateScoring(4, facts({ strokes: 6, penalties: 1, penaltyType: 'water_hazard' }))
+		).toEqual([]);
 	});
 });

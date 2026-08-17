@@ -1,44 +1,28 @@
-// The end-of-hole scoring workflow: branching flow, score-floor validation,
-// and GIR derivation as pure functions. Shared on purpose — the client drives
-// its screens with this module and the server enforces it on submit, so the
-// rules are written once and enforced in both places (see ARCHITECTURE.md).
+// The end-of-hole scoring workflow: branching flow, putts-cap validation, and
+// GIR derivation as pure functions. Shared on purpose — the client drives its
+// screens with this module and the server enforces it on submit, so the rules
+// are written once and enforced in both places (see ARCHITECTURE.md).
 import { fairwayHitValues, penaltyTypeValues, type HoleAnswers, type ScoringFacts } from '../types';
 
-export type ScoringStep =
-	'fairway' | 'miss_direction' | 'putts' | 'penalties' | 'penalty_type' | 'score' | 'review';
+export type ScoringStep = 'score_putts' | 'fairway' | 'review';
 
 /**
  * The next question to ask, derived from the answers gathered so far:
- * fairway (par 4/5 only) → miss_direction (only on a miss) → putts →
- * penalties → penalty_type (only when penalties > 0) → score → review.
+ * score+putts (one screen) → fairway (par 4/5 only) → review.
  */
 export function currentStep(par: number, answers: HoleAnswers): ScoringStep {
-	if (par !== 3) {
-		if (answers.hitFairway === undefined) return 'fairway';
-		if (answers.hitFairway === false && answers.missDirection === undefined)
-			return 'miss_direction';
-	}
-	if (answers.putts === undefined) return 'putts';
-	if (answers.penalties === undefined) return 'penalties';
-	if (answers.penalties > 0 && answers.penaltyType === undefined) return 'penalty_type';
-	if (answers.strokes === undefined) return 'score';
+	if (answers.strokes === undefined || answers.putts === undefined) return 'score_putts';
+	if (par !== 3 && answers.fairwayHit === undefined) return 'fairway';
 	return 'review';
 }
 
 /**
- * The hard floor on the final score: every putt and penalty stroke counts,
- * plus the one guaranteed non-putt stroke — the tee shot.
+ * The most putts possible given the score: every stroke but the tee shot could
+ * be a putt. Because score is captured first, this caps the putts stepper
+ * (rather than flooring the score) and keeps GIR derivation sane.
  */
-export function scoreFloor(answers: Pick<HoleAnswers, 'putts' | 'penalties'>): number {
-	return (answers.putts ?? 0) + (answers.penalties ?? 0) + 1;
-}
-
-/** Starting value for the score stepper: par, unless the floor exceeds it. */
-export function defaultStrokes(
-	par: number,
-	answers: Pick<HoleAnswers, 'putts' | 'penalties'>
-): number {
-	return Math.max(par, scoreFloor(answers));
+export function maxPutts(strokes: number): number {
+	return strokes - 1;
 }
 
 /** Green in regulation: reached the green with two putts' worth of strokes to spare. */
@@ -48,6 +32,7 @@ export function isGreenInRegulation(par: number, strokes: number, putts: number)
 
 /**
  * Map completed question-flow answers to the raw facts the DB stores.
+ * Penalties are not captured in the v1 flow, so they store as 0 / null.
  * Throws if the flow isn't complete (currentStep(par, answers) !== 'review').
  */
 export function toScoringFacts(par: number, answers: HoleAnswers): ScoringFacts {
@@ -56,24 +41,37 @@ export function toScoringFacts(par: number, answers: HoleAnswers): ScoringFacts 
 		throw new Error(`Answers are incomplete: still on the '${step}' step`);
 	}
 
-	// currentStep === 'review' guarantees putts/penalties/strokes are present,
-	// that a par-4/5 miss has a direction, and that penalties > 0 has a type.
-	const { putts, penalties, strokes } = answers as Required<
-		Pick<HoleAnswers, 'putts' | 'penalties' | 'strokes'>
-	>;
+	// currentStep === 'review' guarantees strokes/putts are present, and that a
+	// par-4/5 hole has a fairway result.
+	const { strokes, putts } = answers as Required<Pick<HoleAnswers, 'strokes' | 'putts'>>;
 
 	return {
 		strokes,
 		putts,
-		fairwayHit: par === 3 ? 'na' : answers.hitFairway ? 'hit' : answers.missDirection!,
-		penalties,
-		penaltyType: penalties > 0 ? answers.penaltyType! : null
+		fairwayHit: par === 3 ? 'na' : answers.fairwayHit!,
+		penalties: 0,
+		penaltyType: null
+	};
+}
+
+/**
+ * Inverse of toScoringFacts — rebuild question-flow answers from stored facts,
+ * so re-scoring a hole opens prefilled (lands on the review step). par 3 gets
+ * no fairway answer (that step is skipped). Stored penalties are ignored, since
+ * the v1 flow no longer captures them.
+ */
+export function answersFromFacts(par: number, facts: ScoringFacts): HoleAnswers {
+	return {
+		strokes: facts.strokes,
+		putts: facts.putts,
+		fairwayHit: par === 3 ? undefined : facts.fairwayHit
 	};
 }
 
 /**
  * Validate the raw facts for one hole. Returns a list of problems; empty
- * means valid. Used by the UI before save and by the API on submit.
+ * means valid. Used by the UI before save and by the API on submit. Validates
+ * the full storage shape, including the (currently always-empty) penalty fields.
  */
 export function validateScoring(par: number, facts: ScoringFacts): string[] {
 	const errors: string[] = [];
@@ -101,10 +99,11 @@ export function validateScoring(par: number, facts: ScoringFacts): string[] {
 	// Only apply cross-field rules when the individual fields are sane.
 	if (errors.length > 0) return errors;
 
-	const floor = scoreFloor(facts);
-	if (strokes < floor) {
+	// Putts (plus any penalty strokes) can't account for more than the strokes
+	// after the tee shot — this also protects the GIR derivation.
+	if (putts + penalties > strokes - 1) {
 		errors.push(
-			`Score of ${strokes} is below the minimum of ${floor} (${putts} putts + ${penalties} penalties + the tee shot)`
+			`Putts (${putts})${penalties ? ` + penalties (${penalties})` : ''} can't exceed the score minus the tee shot (${strokes - 1})`
 		);
 	}
 	if (par === 3 && fairwayHit !== 'na') {
