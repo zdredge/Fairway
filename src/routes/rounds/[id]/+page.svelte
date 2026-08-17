@@ -79,9 +79,9 @@
 <div class="progress">
 	<div class="bar"><span style:width={`${(scoredCount / round.holeCount) * 100}%`}></span></div>
 	<p class="progress-text">
-		{scoredCount} of {round.holeCount} holes scored
+		{scoredCount} of {round.holeCount} hole{scoredCount === 1 ? '' : 's'} scored
 		{#if scoredCount > 0}
-			· {totalStrokes} strokes ({toParLabel})
+			· {totalStrokes} ({toParLabel})
 		{/if}
 	</p>
 </div>
@@ -93,7 +93,7 @@
 			{#if complete}
 				<div class="cell" class:scored={scoring}>
 					<span class="num">{n}</span>
-					<span class="par">par {parByHole.get(n)}</span>
+					<span class="par">Par {parByHole.get(n)}</span>
 					{#if scoring}
 						<span class="strokes" class:gir={gir(scoring)}>{scoring.strokes}</span>
 					{/if}
@@ -101,7 +101,7 @@
 			{:else}
 				<a class="cell" class:scored={scoring} href={holeHref(n)}>
 					<span class="num">{n}</span>
-					<span class="par">par {parByHole.get(n)}</span>
+					<span class="par">Par {parByHole.get(n)}</span>
 					{#if scoring}
 						<span class="strokes" class:gir={gir(scoring)}>{scoring.strokes}</span>
 					{:else}

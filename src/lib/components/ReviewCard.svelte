@@ -85,11 +85,13 @@
 	h2 {
 		margin: 0;
 		font-size: 1.4rem;
+		text-align: center;
 	}
 
 	.score {
 		display: flex;
 		align-items: baseline;
+		justify-content: center;
 		gap: 0.75rem;
 	}
 

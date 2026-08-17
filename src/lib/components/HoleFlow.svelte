@@ -129,20 +129,22 @@
 
 {#if step === 'score_putts'}
 	<QuestionCard {holeNumber} {par} onBack={back}>
-		<div class="score-putts">
-			<div class="field">
-				<span class="field-title">Score</span>
-				<Stepper bind:value={scoreDraft} min={1} label="Score" />
+		<div class="score-putts-group">
+			<div class="score-putts">
+				<div class="field">
+					<span class="field-title">Score</span>
+					<Stepper bind:value={scoreDraft} min={1} label="Score" />
+				</div>
+				<div class="field">
+					<span class="field-title">Putts</span>
+					<Stepper bind:value={puttsDraft} min={0} max={maxPutts(scoreDraft)} label="Putts" />
+				</div>
 			</div>
-			<div class="field">
-				<span class="field-title">Putts</span>
-				<Stepper bind:value={puttsDraft} min={0} max={maxPutts(scoreDraft)} label="Putts" />
-			</div>
+			<button type="button" class="next" onclick={commitScorePutts}>Next</button>
 		</div>
-		<button type="button" class="next" onclick={commitScorePutts}>Next</button>
 	</QuestionCard>
 {:else if step === 'fairway'}
-	<QuestionCard question="Fairway?" {holeNumber} {par} onBack={back}>
+	<QuestionCard question="Fairway Hit?" {holeNumber} {par} onBack={back}>
 		<FairwayPad
 			selected={answers.fairwayHit}
 			onSelect={(v: FairwayHit) => commit('fairway', { fairwayHit: v })}
@@ -161,10 +163,18 @@
 {/if}
 
 <style>
+	.score-putts-group {
+		display: flex;
+		flex-direction: column;
+		align-items: stretch;
+		width: fit-content;
+		margin: 0 auto;
+	}
+
 	.score-putts {
 		display: flex;
 		justify-content: center;
-		gap: 2.5rem;
+		gap: 3.5rem;
 	}
 
 	.field {
@@ -176,7 +186,7 @@
 
 	.field-title {
 		font-weight: 600;
-		font-size: 1.1rem;
+		font-size: 1.4rem;
 	}
 
 	.next {
