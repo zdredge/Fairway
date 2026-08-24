@@ -3,7 +3,7 @@
 // → stats. Stats are asserted as *deltas* against the pre-run stats, so the
 // script stays deterministic no matter what's already in the database.
 // Usage: `npm run dev` in one terminal, then `npm run api:smoke`.
-import type { Stats } from '../src/lib/server/stats';
+import type { StatsByLength } from '../src/lib/server/stats';
 
 const BASE = process.env.API_BASE ?? 'http://localhost:5173';
 
@@ -118,7 +118,7 @@ const expected = {
 async function main() {
 	console.log(`Smoke-testing API at ${BASE}\n`);
 
-	const before = (await api<Stats>('GET', '/api/stats')).data;
+	const before = (await api<StatsByLength>('GET', '/api/stats')).data;
 
 	// --- courses ---
 	console.log('POST /api/courses');
@@ -268,52 +268,50 @@ async function main() {
 	});
 	checkEqual('scoring a completed round → 409', lateScore.status, 409);
 
-	// --- stats: asserted as deltas over the pre-run stats ---
+	// --- stats: asserted as deltas over the pre-run stats (18-hole length; the round played is 18) ---
 	console.log('GET /api/stats');
-	const after = (await api<Stats>('GET', '/api/stats')).data;
+	const after = (await api<StatsByLength>('GET', '/api/stats')).data;
+	const b18 = before.eighteen;
+	const a18 = after.eighteen;
 
-	const n = before.roundsPlayed.eighteen;
-	checkEqual('one more completed 18-hole round', after.roundsPlayed.eighteen, n + 1);
-	checkEqual('9-hole rounds untouched', after.roundsPlayed.nine, before.roundsPlayed.nine);
+	const n = b18.roundsPlayed;
+	checkEqual('one more completed 18-hole round', a18.roundsPlayed, n + 1);
+	checkEqual('9-hole rounds untouched', after.nine.roundsPlayed, before.nine.roundsPlayed);
 	checkClose(
 		'scoring average (18)',
-		after.scoringAverage.eighteen,
-		((before.scoringAverage.eighteen ?? 0) * n + expected.strokes) / (n + 1)
+		a18.scoringAverage,
+		((b18.scoringAverage ?? 0) * n + expected.strokes) / (n + 1)
 	);
 	checkClose(
 		'putts per round (18)',
-		after.puttsPerRound.eighteen,
-		((before.puttsPerRound.eighteen ?? 0) * n + expected.putts) / (n + 1)
+		a18.puttsPerRound,
+		((b18.puttsPerRound ?? 0) * n + expected.putts) / (n + 1)
 	);
-	checkEqual(
-		'fairways hit +8',
-		after.fairwaysHit.hit,
-		before.fairwaysHit.hit + expected.fairwaysHit
-	);
+	checkEqual('fairways hit +8', a18.fairwaysHit.hit, b18.fairwaysHit.hit + expected.fairwaysHit);
 	checkEqual(
 		'fairway opportunities +14 (par 3s excluded)',
-		after.fairwaysHit.opportunities,
-		before.fairwaysHit.opportunities + expected.fairwayOpportunities
+		a18.fairwaysHit.opportunities,
+		b18.fairwaysHit.opportunities + expected.fairwayOpportunities
 	);
 	checkClose(
 		'fairways-hit % consistent with counts',
-		after.fairwaysHit.percent,
-		(after.fairwaysHit.hit / after.fairwaysHit.opportunities) * 100
+		a18.fairwaysHit.percent,
+		(a18.fairwaysHit.hit / a18.fairwaysHit.opportunities) * 100
 	);
 	checkEqual(
 		'greens in regulation +10',
-		after.greensInRegulation.hit,
-		before.greensInRegulation.hit + expected.gir
+		a18.greensInRegulation.hit,
+		b18.greensInRegulation.hit + expected.gir
 	);
 	checkEqual(
 		'GIR holes +18',
-		after.greensInRegulation.holesPlayed,
-		before.greensInRegulation.holesPlayed + 18
+		a18.greensInRegulation.holesPlayed,
+		b18.greensInRegulation.holesPlayed + 18
 	);
 	for (const par of [3, 4, 5] as const) {
 		const key = `par${par}` as const;
-		const b = before.byParType[key];
-		const a = after.byParType[key];
+		const b = b18.byParType[key];
+		const a = a18.byParType[key];
 		checkEqual(
 			`par-${par} holes played +${expected.parCount(par)}`,
 			a.holesPlayed,

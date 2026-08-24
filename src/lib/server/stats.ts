@@ -2,8 +2,12 @@
 // from the raw scoring facts; nothing is ever persisted. Pure math lives in
 // computeStats() (unit-tested); getStatsForUser() is the thin fetch wrapper.
 import { isGreenInRegulation } from '../scoring/workflow';
-import type { FairwayHit } from '../types';
+import type { FairwayHit, LengthStats, ParTypeStats, Stats, StatsByLength } from '../types';
 import { listCompletedRoundsWithScorings } from './db/queries';
+
+// The response types (Stats, LengthSplit, ParTypeStats, …) live in $lib/types so the
+// client can import them without reaching into $lib/server; re-export for callers here.
+export type { LengthSplit, ParTypeStats, Stats, LengthStats, StatsByLength } from '../types';
 
 export interface StatsHole {
 	par: number;
@@ -15,27 +19,6 @@ export interface StatsHole {
 export interface StatsRound {
 	holeCount: number; // 9 or 18 — the round's declared length
 	holes: StatsHole[];
-}
-
-/** Per-round-length split — mixing 9- and 18-hole rounds in one average is misleading. */
-export interface LengthSplit {
-	nine: number | null;
-	eighteen: number | null;
-}
-
-export interface ParTypeStats {
-	average: number | null;
-	holesPlayed: number;
-}
-
-export interface Stats {
-	roundsPlayed: { nine: number; eighteen: number };
-	scoringAverage: LengthSplit;
-	puttsPerRound: LengthSplit;
-	/** Fairways hit as a percentage of holes with a fairway (par 3s excluded). */
-	fairwaysHit: { hit: number; opportunities: number; percent: number | null };
-	greensInRegulation: { hit: number; holesPlayed: number; percent: number | null };
-	byParType: { par3: ParTypeStats; par4: ParTypeStats; par5: ParTypeStats };
 }
 
 function average(values: number[]): number | null {
@@ -86,20 +69,39 @@ export function computeStats(rounds: StatsRound[]): Stats {
 	};
 }
 
-export async function getStatsForUser(userId: string): Promise<Stats> {
+/** Extract one length's stats from a computeStats result computed over only that length. */
+function toLengthStats(stats: Stats, key: 'nine' | 'eighteen'): LengthStats {
+	return {
+		roundsPlayed: stats.roundsPlayed[key],
+		scoringAverage: stats.scoringAverage[key],
+		puttsPerRound: stats.puttsPerRound[key],
+		fairwaysHit: stats.fairwaysHit,
+		greensInRegulation: stats.greensInRegulation,
+		byParType: stats.byParType
+	};
+}
+
+export async function getStatsForUser(userId: string): Promise<StatsByLength> {
 	const rounds = await listCompletedRoundsWithScorings(userId);
-	return computeStats(
-		rounds.map((round) => {
-			const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
-			return {
-				holeCount: round.holeCount,
-				holes: round.scorings.flatMap((s) => {
-					const par = parByHole.get(s.holeNumber);
-					// A scoring without a matching course hole shouldn't exist; skip defensively.
-					if (par === undefined) return [];
-					return [{ par, strokes: s.strokes, putts: s.putts, fairwayHit: s.fairwayHit }];
-				})
-			};
-		})
-	);
+	const toStatsRounds = (holeCount: number) =>
+		rounds
+			.filter((round) => round.holeCount === holeCount)
+			.map((round) => {
+				const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
+				return {
+					holeCount: round.holeCount,
+					holes: round.scorings.flatMap((s) => {
+						const par = parByHole.get(s.holeNumber);
+						// A scoring without a matching course hole shouldn't exist; skip defensively.
+						if (par === undefined) return [];
+						return [{ par, strokes: s.strokes, putts: s.putts, fairwayHit: s.fairwayHit }];
+					})
+				};
+			});
+
+	// Compute each length independently so fairways/GIR/par are scoped to that length too.
+	return {
+		nine: toLengthStats(computeStats(toStatsRounds(9)), 'nine'),
+		eighteen: toLengthStats(computeStats(toStatsRounds(18)), 'eighteen')
+	};
 }

@@ -87,6 +87,18 @@ export async function listRounds(userId: string): Promise<RoundWithCourse[]> {
 	});
 }
 
+/** All of a user's rounds (newest first) with holes + scorings — for history summaries. */
+export async function listRoundSummaries(userId: string): Promise<RoundWithDetails[]> {
+	return db.query.rounds.findMany({
+		where: eq(rounds.userId, userId),
+		orderBy: desc(rounds.playedOn),
+		with: {
+			course: { with: { holes: { orderBy: holes.number } } },
+			scorings: { orderBy: scoring.holeNumber }
+		}
+	});
+}
+
 export async function getRound(id: string): Promise<RoundWithDetails | undefined> {
 	return db.query.rounds.findFirst({
 		where: eq(rounds.id, id),

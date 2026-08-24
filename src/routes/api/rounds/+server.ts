@@ -1,12 +1,36 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getSessionUser } from '$lib/server/auth';
-import { createRound, getCourse, listRounds } from '$lib/server/db/queries';
+import { createRound, getCourse, listRoundSummaries } from '$lib/server/db/queries';
 import { badRequest, readJsonBody } from '$lib/server/http';
+import type { ApiRoundSummary } from '$lib/types';
 
 export const GET: RequestHandler = async () => {
 	const user = await getSessionUser();
-	return json(await listRounds(user.id));
+	const rounds = await listRoundSummaries(user.id);
+
+	// Summarize each round over its scored holes — keeps full scorings off the wire.
+	const summaries: ApiRoundSummary[] = rounds.map((round) => {
+		const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
+		let totalStrokes = 0;
+		let totalPar = 0;
+		for (const s of round.scorings) {
+			totalStrokes += s.strokes;
+			totalPar += parByHole.get(s.holeNumber) ?? 0;
+		}
+		return {
+			id: round.id,
+			courseName: round.course.name,
+			holeCount: round.holeCount,
+			playedOn: round.playedOn.toISOString(),
+			tee: round.tee,
+			status: round.status,
+			holesScored: round.scorings.length,
+			totalStrokes,
+			totalPar
+		};
+	});
+	return json(summaries);
 };
 
 export const POST: RequestHandler = async ({ request }) => {
