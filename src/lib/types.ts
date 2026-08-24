@@ -85,7 +85,58 @@ export interface ApiRoundWithCourse extends ApiRound {
 	course: ApiCourse;
 }
 
+/** Lean per-round summary for the history list — totals computed over scored holes. */
+export interface ApiRoundSummary {
+	id: string;
+	courseName: string;
+	holeCount: number;
+	playedOn: string;
+	tee: string | null;
+	status: RoundStatus;
+	holesScored: number;
+	totalStrokes: number;
+	totalPar: number;
+}
+
 export interface ApiRoundDetail extends ApiRound {
 	course: ApiCourseWithHoles;
 	scorings: ApiScoring[];
+}
+
+// ---- Stats (aggregated on the server, computed from raw scorings) ----
+
+/** Per-round-length split — mixing 9- and 18-hole rounds in one average is misleading. */
+export interface LengthSplit {
+	nine: number | null;
+	eighteen: number | null;
+}
+
+export interface ParTypeStats {
+	average: number | null;
+	holesPlayed: number;
+}
+
+export interface Stats {
+	roundsPlayed: { nine: number; eighteen: number };
+	scoringAverage: LengthSplit;
+	puttsPerRound: LengthSplit;
+	/** Fairways hit as a percentage of holes with a fairway (par 3s excluded). */
+	fairwaysHit: { hit: number; opportunities: number; percent: number | null };
+	greensInRegulation: { hit: number; holesPlayed: number; percent: number | null };
+	byParType: { par3: ParTypeStats; par4: ParTypeStats; par5: ParTypeStats };
+}
+
+/** All stats scoped to one round length (9 or 18), for the dashboard's length toggle. */
+export interface LengthStats {
+	roundsPlayed: number;
+	scoringAverage: number | null;
+	puttsPerRound: number | null;
+	fairwaysHit: { hit: number; opportunities: number; percent: number | null };
+	greensInRegulation: { hit: number; holesPlayed: number; percent: number | null };
+	byParType: { par3: ParTypeStats; par4: ParTypeStats; par5: ParTypeStats };
+}
+
+export interface StatsByLength {
+	nine: LengthStats;
+	eighteen: LengthStats;
 }
