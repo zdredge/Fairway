@@ -2,8 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { apiFetch, ApiError } from '$lib/api';
-	import { isGreenInRegulation } from '$lib/scoring/workflow';
-	import type { ApiScoring } from '$lib/types';
+	import Scorecard from '$lib/components/Scorecard.svelte';
 
 	let { data } = $props();
 
@@ -18,7 +17,6 @@
 		})
 	);
 
-	// par by hole number, and scoring by hole number, for the grid.
 	const parByHole = $derived(new Map(round.course.holes.map((h) => [h.number, h.par])));
 	const scoreByHole = $derived(new Map(round.scorings.map((s) => [s.holeNumber, s])));
 	const holeNumbers = $derived(Array.from({ length: round.holeCount }, (_, i) => i + 1));
@@ -40,14 +38,6 @@
 
 	function holeHref(n: number) {
 		return resolve('/rounds/[id]/holes/[n]', { id: round.id, n: String(n) });
-	}
-
-	function gir(scoring: ApiScoring) {
-		return isGreenInRegulation(
-			parByHole.get(scoring.holeNumber) ?? 0,
-			scoring.strokes,
-			scoring.putts
-		);
 	}
 
 	async function finish() {
@@ -76,42 +66,25 @@
 	{played}{#if round.tee}&nbsp;· {round.tee} tees{/if}
 </p>
 
-<div class="progress">
-	<div class="bar"><span style:width={`${(scoredCount / round.holeCount) * 100}%`}></span></div>
-	<p class="progress-text">
-		{scoredCount} of {round.holeCount} hole{scoredCount === 1 ? '' : 's'} scored
-		{#if scoredCount > 0}
-			· {totalStrokes} ({toParLabel})
-		{/if}
-	</p>
-</div>
-
-<ul class="grid">
-	{#each holeNumbers as n (n)}
-		{@const scoring = scoreByHole.get(n)}
-		<li>
-			{#if complete}
-				<div class="cell" class:scored={scoring}>
-					<span class="num">{n}</span>
-					<span class="par">Par {parByHole.get(n)}</span>
-					{#if scoring}
-						<span class="strokes" class:gir={gir(scoring)}>{scoring.strokes}</span>
-					{/if}
-				</div>
-			{:else}
-				<a class="cell" class:scored={scoring} href={holeHref(n)}>
-					<span class="num">{n}</span>
-					<span class="par">Par {parByHole.get(n)}</span>
-					{#if scoring}
-						<span class="strokes" class:gir={gir(scoring)}>{scoring.strokes}</span>
-					{:else}
-						<span class="dash">–</span>
-					{/if}
-				</a>
+{#if !complete}
+	<div class="progress">
+		<div class="bar"><span style:width={`${(scoredCount / round.holeCount) * 100}%`}></span></div>
+		<p class="progress-text">
+			{scoredCount} of {round.holeCount} hole{scoredCount === 1 ? '' : 's'} scored
+			{#if scoredCount > 0}
+				· {totalStrokes} ({toParLabel})
 			{/if}
-		</li>
-	{/each}
-</ul>
+		</p>
+	</div>
+{/if}
+
+<Scorecard
+	holes={round.course.holes}
+	scorings={round.scorings}
+	holeCount={round.holeCount}
+	roundId={round.id}
+	interactive={!complete}
+/>
 
 {#if !complete}
 	<div class="actions">
@@ -128,7 +101,10 @@
 		<p class="error">{finishError}</p>
 	{/if}
 {:else}
-	<p class="done">Round complete — nice work. Full scorecard and stats arrive in Phase 6.</p>
+	<div class="final">
+		<p>Final score: <strong>{totalStrokes}</strong> ({toParLabel})</p>
+		<a href={resolve('/rounds/[id]/stats', { id: round.id })}>View round stats →</a>
+	</div>
 {/if}
 
 <style>
@@ -175,67 +151,15 @@
 	}
 
 	.progress-text {
-		margin: 0.5rem 0 0;
+		margin: 0.5rem 0 1.25rem;
 		color: #444;
 		font-size: 0.95rem;
-	}
-
-	.grid {
-		list-style: none;
-		padding: 0;
-		margin: 1.5rem 0;
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
-		gap: 0.5rem;
-	}
-
-	.cell {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.15rem;
-		padding: 0.5rem;
-		border: 1px solid #e2e2e2;
-		border-radius: 0.5rem;
-		text-decoration: none;
-		color: inherit;
-	}
-
-	a.cell:hover {
-		border-color: #1a7a3a;
-	}
-
-	.cell.scored {
-		background: #f6faf7;
-	}
-
-	.num {
-		font-weight: 700;
-	}
-
-	.par {
-		font-size: 0.7rem;
-		color: #888;
-	}
-
-	.strokes {
-		font-size: 1.25rem;
-		font-weight: 700;
-		color: #333;
-	}
-
-	.strokes.gir {
-		color: #1a7a3a;
-	}
-
-	.dash {
-		font-size: 1.25rem;
-		color: #ccc;
 	}
 
 	.actions {
 		display: flex;
 		gap: 0.75rem;
+		margin-top: 1.5rem;
 	}
 
 	.btn {
@@ -264,8 +188,18 @@
 		color: #a4231a;
 	}
 
-	.done {
+	.final {
+		margin-top: 1.5rem;
+	}
+
+	.final p {
+		margin: 0 0 0.5rem;
+		font-size: 1.1rem;
+	}
+
+	.final a {
 		color: #1a7a3a;
 		font-weight: 600;
+		text-decoration: none;
 	}
 </style>
