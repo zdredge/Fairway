@@ -56,10 +56,11 @@ Three stacked layers: the Svelte client (a PWA that buffers the in-progress roun
 
 ## Data model
 
-Five tables. Only raw captured facts are stored; anything derivable is computed on read.
+Six tables. Only raw captured facts are stored; anything derivable is computed on read.
 
-- **users** — `id`, `email`, `display_name`, `created_at`. Present from day one so multi-user isn't a painful retrofit later.
-- **courses** — `id`, `name`, `hole_count`, `created_at`.
+- **users** — `id`, `email`, `display_name`, `password_hash`, `created_at`. `password_hash` is `salt:key` from Node's built-in `crypto.scrypt` (no external hashing dependency).
+- **sessions** — `id`, `user_id` (FK), `expires_at`. The `id` is the SHA-256 of the token held in the cookie, so a leaked DB can't be used to impersonate sessions (Lucia-style, hand-rolled in `auth.ts`).
+- **courses** — `id`, `user_id` (FK), `name`, `hole_count`, `created_at`. Courses are owned per user (data is scoped to the signed-in account).
 - **holes** — `id`, `course_id` (FK), `number`, `par`, `yardage`. A separate table so courses are reusable without duplicating par data.
 - **rounds** — `id`, `user_id` (FK), `course_id` (FK), `tee`, `played_on`, `hole_count`, `status`. `hole_count` (9 or 18) lives on the round, not just the course, so a 9-hole round can be played on an 18-hole course.
 - **scoring** — `id`, `round_id` (FK), `hole_number`, `strokes`, `putts`, `fairway_hit`, `penalties`, `penalty_type`.
@@ -147,6 +148,7 @@ Two placement decisions carry most of the weight. Everything under `lib/server/`
 
 | Method + path | Purpose |
 |---|---|
+| `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/logout` | Session auth — create account / sign in (set the session cookie) / sign out |
 | `POST /api/courses` and `GET /api/courses` | Create a reusable course; list saved courses |
 | `POST /api/rounds` | Start a round (course, tees, hole count) → returns round id |
 | `GET /api/rounds` | Round history for the dashboard |
@@ -156,6 +158,8 @@ Two placement decisions carry most of the weight. Everything under `lib/server/`
 | `GET /api/stats` | Aggregated stats |
 
 There is deliberately no `/gir` endpoint and no stored fairway percentage — those are computed in `stats.ts` from the raw scorings, the same derive-don't-store discipline carried up from the data model into the API.
+
+Every data endpoint requires a valid session (`hooks.server.ts` resolves the session cookie into `locals.user`; handlers call `requireLogin`) and is scoped to that user; unauthenticated data calls get 401, and app pages redirect to `/login`. Only `/api/auth/*` is public.
 
 ## Offline strategy
 

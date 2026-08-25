@@ -7,7 +7,7 @@ async function check() {
 	if (!user) throw new Error('Dev user not found — run `npm run db:seed` first.');
 	console.log(`User:   ${user.displayName} <${user.email}>`);
 
-	const allCourses = await listCourses();
+	const allCourses = await listCourses(user.id);
 	if (allCourses.length === 0) throw new Error('No courses found — run `npm run db:seed` first.');
 
 	const course = await getCourse(allCourses[0].id);

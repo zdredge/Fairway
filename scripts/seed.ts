@@ -3,8 +3,10 @@ import { eq } from 'drizzle-orm';
 import { db } from '../src/lib/server/db';
 import { courses } from '../src/lib/server/db/schema';
 import { createCourse, createUser, getUserByEmail } from '../src/lib/server/db/queries';
+import { hashPassword } from '../src/lib/server/password';
 
 const DEV_USER_EMAIL = 'dev@fairway.local';
+const DEV_USER_PASSWORD = 'password123';
 const SAMPLE_COURSE_NAME = 'Pebble Creek (Sample)';
 
 // A par-72 18-hole layout: [par, yardage] per hole.
@@ -34,8 +36,12 @@ async function seed() {
 	if (user) {
 		console.log(`Dev user already present: ${user.email}`);
 	} else {
-		user = await createUser({ email: DEV_USER_EMAIL, displayName: 'Dev User' });
-		console.log(`Created dev user: ${user.email}`);
+		user = await createUser({
+			email: DEV_USER_EMAIL,
+			displayName: 'Dev User',
+			passwordHash: await hashPassword(DEV_USER_PASSWORD)
+		});
+		console.log(`Created dev user: ${user.email} (password: ${DEV_USER_PASSWORD})`);
 	}
 
 	const existingCourse = await db.query.courses.findFirst({
@@ -45,6 +51,7 @@ async function seed() {
 		console.log(`Sample course already present: ${existingCourse.name}`);
 	} else {
 		const course = createCourse({
+			userId: user.id,
 			name: SAMPLE_COURSE_NAME,
 			holes: SAMPLE_HOLES.map(([par, yardage], i) => ({ number: i + 1, par, yardage }))
 		});
