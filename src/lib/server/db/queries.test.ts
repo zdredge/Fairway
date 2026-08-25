@@ -11,6 +11,7 @@ import {
 	getCourse,
 	getRound,
 	getUserByEmail,
+	listCourses,
 	saveScoring
 } from './queries';
 
@@ -27,34 +28,45 @@ const threeHoles = [
 	{ number: 3, par: 5 } // yardage optional
 ];
 
-async function makeRound() {
-	const user = await createUser({
-		email: `golfer-${crypto.randomUUID()}@test.local`,
-		displayName: 'Test Golfer'
+let userSeq = 0;
+function makeUser() {
+	return createUser({
+		email: `golfer-${userSeq++}-${crypto.randomUUID()}@test.local`,
+		displayName: 'Test Golfer',
+		passwordHash: 'salt:deadbeef'
 	});
-	const course = createCourse({ name: 'Round Course', holes: threeHoles });
+}
+
+async function makeRound() {
+	const user = await makeUser();
+	const course = createCourse({ userId: user.id, name: 'Round Course', holes: threeHoles });
 	const round = await createRound({ userId: user.id, courseId: course.id, holeCount: 3 });
 	return { user, course, round };
 }
 
 describe('users', () => {
 	test('create and fetch by email', async () => {
-		const created = await createUser({ email: 'dev@test.local', displayName: 'Dev' });
+		const created = await createUser({
+			email: 'dev@test.local',
+			displayName: 'Dev',
+			passwordHash: 'salt:hash'
+		});
 		const fetched = await getUserByEmail('dev@test.local');
 		expect(fetched?.id).toBe(created.id);
 	});
 
 	test('duplicate email is rejected', async () => {
-		await createUser({ email: 'dupe@test.local', displayName: 'First' });
-		await expect(createUser({ email: 'dupe@test.local', displayName: 'Second' })).rejects.toThrow(
-			/UNIQUE/i
-		);
+		await createUser({ email: 'dupe@test.local', displayName: 'First', passwordHash: 'salt:hash' });
+		await expect(
+			createUser({ email: 'dupe@test.local', displayName: 'Second', passwordHash: 'salt:hash' })
+		).rejects.toThrow(/UNIQUE/i);
 	});
 });
 
 describe('courses', () => {
 	test('createCourse → getCourse round-trips holes in number order', async () => {
-		const created = createCourse({ name: 'Trip Course', holes: threeHoles });
+		const user = await makeUser();
+		const created = createCourse({ userId: user.id, name: 'Trip Course', holes: threeHoles });
 		expect(created.holeCount).toBe(3);
 
 		const fetched = await getCourse(created.id);
@@ -64,15 +76,26 @@ describe('courses', () => {
 		expect(fetched!.holes[2].yardage).toBeNull();
 	});
 
+	test('listCourses is scoped to the owner', async () => {
+		const a = await makeUser();
+		const b = await makeUser();
+		createCourse({ userId: a.id, name: "A's course", holes: threeHoles });
+
+		expect((await listCourses(a.id)).map((c) => c.name)).toEqual(["A's course"]);
+		expect(await listCourses(b.id)).toEqual([]);
+	});
+
 	test('duplicate hole number within a course is rejected', async () => {
-		const course = createCourse({ name: 'Dupe Hole Course', holes: threeHoles });
+		const user = await makeUser();
+		const course = createCourse({ userId: user.id, name: 'Dupe Hole Course', holes: threeHoles });
 		await expect(
 			db.insert(holes).values({ courseId: course.id, number: 1, par: 4 })
 		).rejects.toThrow(/UNIQUE/i);
 	});
 
 	test('deleting a course cascades to its holes', async () => {
-		const course = createCourse({ name: 'Doomed Course', holes: threeHoles });
+		const user = await makeUser();
+		const course = createCourse({ userId: user.id, name: 'Doomed Course', holes: threeHoles });
 		await db.delete(courses).where(eq(courses.id, course.id));
 		const [remaining] = await db
 			.select({ n: count() })

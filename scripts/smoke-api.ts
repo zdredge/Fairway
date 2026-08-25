@@ -35,17 +35,41 @@ function checkClose(label: string, actual: number | null, expected: number) {
 	);
 }
 
+// Session cookie captured at sign-in and sent on every subsequent request.
+let cookie = '';
+
 async function api<T>(
 	method: string,
 	path: string,
 	body?: unknown
 ): Promise<{ status: number; data: T }> {
+	const headers: Record<string, string> = {};
+	if (body !== undefined) headers['content-type'] = 'application/json';
+	if (cookie) headers['cookie'] = cookie;
 	const res = await fetch(`${BASE}${path}`, {
 		method,
-		headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+		headers,
 		body: body === undefined ? undefined : JSON.stringify(body)
 	});
+	// Capture any session cookie the auth endpoints set.
+	const setCookie = res.headers.get('set-cookie');
+	if (setCookie) {
+		const match = setCookie.match(/session=[^;]*/);
+		if (match) cookie = match[0];
+	}
 	return { status: res.status, data: (await res.json()) as T };
+}
+
+/** Sign up a fresh isolated user; the returned cookie is carried by `api()`. */
+async function signUp(): Promise<string> {
+	cookie = '';
+	const email = `smoke-${Date.now()}-${Math.random().toString(36).slice(2)}@test.local`;
+	const res = await api<{ id: string }>('POST', '/api/auth/signup', {
+		email,
+		password: 'smoke-password-123'
+	});
+	if (res.status !== 201) throw new Error(`signup failed: ${res.status}`);
+	return email;
 }
 
 // One scripted 18-hole round. Hand-checked totals:
@@ -118,7 +142,22 @@ const expected = {
 async function main() {
 	console.log(`Smoke-testing API at ${BASE}\n`);
 
+	// --- auth ---
+	console.log('auth');
+	const unauth = await api<ErrorBody>('GET', '/api/rounds');
+	checkEqual('unauthenticated data request → 401', unauth.status, 401);
+
+	await signUp(); // fresh isolated account; api() now carries its session cookie
+	check('signed up a fresh user', cookie.length > 0);
+
+	// A brand-new account starts empty.
 	const before = (await api<StatsByLength>('GET', '/api/stats')).data;
+	checkEqual('new account has no completed 18-hole rounds', before.eighteen.roundsPlayed, 0);
+	checkEqual(
+		'new account has no courses',
+		(await api<unknown[]>('GET', '/api/courses')).data.length,
+		0
+	);
 
 	// --- courses ---
 	console.log('POST /api/courses');
@@ -323,6 +362,25 @@ async function main() {
 			((b.average ?? 0) * b.holesPlayed + expected.parTotal(par)) / a.holesPlayed
 		);
 	}
+
+	// --- isolation: a second fresh account sees none of the first's data ---
+	console.log('isolation');
+	await signUp(); // switches the carried cookie to user B
+	checkEqual(
+		"user B sees none of user A's courses",
+		(await api<unknown[]>('GET', '/api/courses')).data.length,
+		0
+	);
+	checkEqual(
+		"user B sees none of user A's rounds",
+		(await api<unknown[]>('GET', '/api/rounds')).data.length,
+		0
+	);
+	checkEqual(
+		"user B can't open user A's round (404)",
+		(await api<ErrorBody>('GET', `/api/rounds/${roundId}`)).status,
+		404
+	);
 
 	console.log(failures === 0 ? '\nAPI smoke test passed.' : `\n${failures} check(s) failed.`);
 	process.exit(failures === 0 ? 0 : 1);

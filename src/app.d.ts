@@ -7,7 +7,10 @@ declare global {
 			/** Field-level validation problems, present on 400 responses. */
 			errors?: string[];
 		}
-		// interface Locals {}
+		interface Locals {
+			user: import('$lib/server/db/schema').SafeUser | null;
+			session: import('$lib/server/db/schema').Session | null;
+		}
 		// interface PageData {}
 		// interface PageState {}
 		// interface Platform {}

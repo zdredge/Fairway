@@ -1,12 +1,12 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getSessionUser } from '$lib/server/auth';
+import { requireLogin } from '$lib/server/auth';
 import { createRound, getCourse, listRoundSummaries } from '$lib/server/db/queries';
 import { badRequest, readJsonBody } from '$lib/server/http';
 import type { ApiRoundSummary } from '$lib/types';
 
-export const GET: RequestHandler = async () => {
-	const user = await getSessionUser();
+export const GET: RequestHandler = async ({ locals }) => {
+	const user = requireLogin(locals);
 	const rounds = await listRoundSummaries(user.id);
 
 	// Summarize each round over its scored holes — keeps full scorings off the wire.
@@ -33,8 +33,8 @@ export const GET: RequestHandler = async () => {
 	return json(summaries);
 };
 
-export const POST: RequestHandler = async ({ request }) => {
-	const user = await getSessionUser();
+export const POST: RequestHandler = async ({ request, locals }) => {
+	const user = requireLogin(locals);
 	const body = await readJsonBody(request);
 
 	if (typeof body !== 'object' || body === null) {
@@ -48,7 +48,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		badRequest(errors);
 	}
 	const course = await getCourse(courseId);
-	if (!course) error(404, { message: 'Course not found' });
+	// 404 both for a missing course and one owned by another user.
+	if (!course || course.userId !== user.id) error(404, { message: 'Course not found' });
 
 	if (holeCount !== 9 && holeCount !== 18) {
 		errors.push('holeCount must be 9 or 18');

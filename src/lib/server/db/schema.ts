@@ -20,11 +20,25 @@ export const users = sqliteTable('users', {
 	id: id(),
 	email: text('email').notNull().unique(),
 	displayName: text('display_name').notNull(),
+	passwordHash: text('password_hash').notNull(),
 	createdAt: createdAt()
+});
+
+export const sessions = sqliteTable('sessions', {
+	// The session id stored here is the SHA-256 of the token in the cookie, so a
+	// leaked DB can't be used to impersonate sessions.
+	id: text('id').primaryKey(),
+	userId: text('user_id')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
 });
 
 export const courses = sqliteTable('courses', {
 	id: id(),
+	userId: text('user_id')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
 	name: text('name').notNull(),
 	holeCount: integer('hole_count').notNull(),
 	createdAt: createdAt()
@@ -79,10 +93,17 @@ export const scoring = sqliteTable(
 );
 
 export const usersRelations = relations(users, ({ many }) => ({
-	rounds: many(rounds)
+	rounds: many(rounds),
+	courses: many(courses),
+	sessions: many(sessions)
 }));
 
-export const coursesRelations = relations(courses, ({ many }) => ({
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+	user: one(users, { fields: [sessions.userId], references: [users.id] })
+}));
+
+export const coursesRelations = relations(courses, ({ one, many }) => ({
+	user: one(users, { fields: [courses.userId], references: [users.id] }),
 	holes: many(holes),
 	rounds: many(rounds)
 }));
@@ -102,6 +123,9 @@ export const scoringRelations = relations(scoring, ({ one }) => ({
 }));
 
 export type User = typeof users.$inferSelect;
+/** User fields safe to expose to the client / carry in locals — never the password hash. */
+export type SafeUser = Pick<User, 'id' | 'email' | 'displayName'>;
+export type Session = typeof sessions.$inferSelect;
 export type Course = typeof courses.$inferSelect;
 export type Hole = typeof holes.$inferSelect;
 export type Round = typeof rounds.$inferSelect;

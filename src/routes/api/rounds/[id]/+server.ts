@@ -1,18 +1,18 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getSessionUser } from '$lib/server/auth';
+import { requireLogin } from '$lib/server/auth';
 import { completeRound, getRound } from '$lib/server/db/queries';
 import { badRequest, readJsonBody } from '$lib/server/http';
 
-export const GET: RequestHandler = async ({ params }) => {
-	const user = await getSessionUser();
+export const GET: RequestHandler = async ({ params, locals }) => {
+	const user = requireLogin(locals);
 	const round = await getRound(params.id);
 	if (!round || round.userId !== user.id) error(404, { message: 'Round not found' });
 	return json(round);
 };
 
-export const PATCH: RequestHandler = async ({ params, request }) => {
-	const user = await getSessionUser();
+export const PATCH: RequestHandler = async ({ params, request, locals }) => {
+	const user = requireLogin(locals);
 	const round = await getRound(params.id);
 	if (!round || round.userId !== user.id) error(404, { message: 'Round not found' });
 

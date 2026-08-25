@@ -1,13 +1,13 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getSessionUser } from '$lib/server/auth';
+import { requireLogin } from '$lib/server/auth';
 import { getRound, saveScoring } from '$lib/server/db/queries';
 import { badRequest, readJsonBody } from '$lib/server/http';
 import { validateScoring } from '$lib/scoring/workflow';
 import type { FairwayHit, PenaltyType, ScoringFacts } from '$lib/types';
 
-export const POST: RequestHandler = async ({ params, request }) => {
-	const user = await getSessionUser();
+export const POST: RequestHandler = async ({ params, request, locals }) => {
+	const user = requireLogin(locals);
 	const round = await getRound(params.id);
 	if (!round || round.userId !== user.id) error(404, { message: 'Round not found' });
 	if (round.status === 'complete') {

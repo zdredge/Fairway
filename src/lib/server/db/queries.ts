@@ -5,18 +5,25 @@ import {
 	holes,
 	rounds,
 	scoring,
+	sessions,
 	users,
 	type Course,
 	type Hole,
 	type NewScoring,
 	type Round,
+	type SafeUser,
 	type Scoring,
+	type Session,
 	type User
 } from './schema';
 
 // ---- users ----
 
-export async function createUser(input: { email: string; displayName: string }): Promise<User> {
+export async function createUser(input: {
+	email: string;
+	displayName: string;
+	passwordHash: string;
+}): Promise<User> {
 	const [user] = await db.insert(users).values(input).returning();
 	return user;
 }
@@ -25,9 +32,34 @@ export async function getUserByEmail(email: string): Promise<User | undefined> {
 	return db.query.users.findFirst({ where: eq(users.email, email) });
 }
 
+// ---- sessions ----
+
+export async function insertSession(session: Session): Promise<void> {
+	await db.insert(sessions).values(session);
+}
+
+export type SessionWithUser = Session & { user: SafeUser };
+
+export async function getSessionWithUser(id: string): Promise<SessionWithUser | undefined> {
+	const row = await db.query.sessions.findFirst({
+		where: eq(sessions.id, id),
+		with: { user: { columns: { id: true, email: true, displayName: true } } }
+	});
+	return row as SessionWithUser | undefined;
+}
+
+export async function deleteSession(id: string): Promise<void> {
+	await db.delete(sessions).where(eq(sessions.id, id));
+}
+
+export async function refreshSessionExpiry(id: string, expiresAt: Date): Promise<void> {
+	await db.update(sessions).set({ expiresAt }).where(eq(sessions.id, id));
+}
+
 // ---- courses ----
 
 export interface CreateCourseInput {
+	userId: string;
 	name: string;
 	holes: Array<{ number: number; par: number; yardage?: number }>;
 }
@@ -38,7 +70,7 @@ export function createCourse(input: CreateCourseInput): CourseWithHoles {
 	return db.transaction((tx) => {
 		const course = tx
 			.insert(courses)
-			.values({ name: input.name, holeCount: input.holes.length })
+			.values({ userId: input.userId, name: input.name, holeCount: input.holes.length })
 			.returning()
 			.get();
 		const courseHoles = tx
@@ -50,8 +82,8 @@ export function createCourse(input: CreateCourseInput): CourseWithHoles {
 	});
 }
 
-export async function listCourses(): Promise<Course[]> {
-	return db.query.courses.findMany({ orderBy: courses.name });
+export async function listCourses(userId: string): Promise<Course[]> {
+	return db.query.courses.findMany({ where: eq(courses.userId, userId), orderBy: courses.name });
 }
 
 export async function getCourse(id: string): Promise<CourseWithHoles | undefined> {

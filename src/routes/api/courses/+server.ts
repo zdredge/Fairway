@@ -1,19 +1,22 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { requireLogin } from '$lib/server/auth';
 import { createCourse, listCourses, type CreateCourseInput } from '$lib/server/db/queries';
 import { badRequest, readJsonBody } from '$lib/server/http';
 
-export const GET: RequestHandler = async () => {
-	return json(await listCourses());
+export const GET: RequestHandler = async ({ locals }) => {
+	const user = requireLogin(locals);
+	return json(await listCourses(user.id));
 };
 
-export const POST: RequestHandler = async ({ request }) => {
-	const input = validateCourseInput(await readJsonBody(request));
+export const POST: RequestHandler = async ({ request, locals }) => {
+	const user = requireLogin(locals);
+	const input = validateCourseInput(user.id, await readJsonBody(request));
 	const course = createCourse(input);
 	return json(course, { status: 201 });
 };
 
-function validateCourseInput(body: unknown): CreateCourseInput {
+function validateCourseInput(userId: string, body: unknown): CreateCourseInput {
 	if (typeof body !== 'object' || body === null) {
 		badRequest(['Body must be a JSON object']);
 	}
@@ -56,5 +59,5 @@ function validateCourseInput(body: unknown): CreateCourseInput {
 	}
 	if (errors.length > 0) badRequest(errors);
 
-	return { name: (name as string).trim(), holes: parsed.map((h) => h!) };
+	return { userId, name: (name as string).trim(), holes: parsed.map((h) => h!) };
 }
