@@ -40,7 +40,7 @@
 		</p>
 	{:else}
 		<p class="summary">
-			Across your {s.roundsPlayed} completed {lengthLabel} round{s.roundsPlayed === 1 ? '' : 's'}
+			Across your {s.roundsPlayed} completed {lengthLabel} round{s.roundsPlayed === 1 ? '' : 's'}.
 		</p>
 
 		<div class="tiles">
