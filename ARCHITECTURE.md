@@ -165,6 +165,16 @@ Every data endpoint requires a valid session (`hooks.server.ts` resolves the ses
 
 Golfers routinely lose signal mid-course, so the app must record holes without a live connection. v1 uses a pragmatic middle ground rather than full offline sync: the client buffers the in-progress round locally (IndexedDB, via the service worker) and submits scorings as connectivity allows, with the round safely recoverable if the app is backgrounded or closed. Full multi-device offline sync is a candidate enhancement, not a v1 requirement.
 
+**Service worker (`src/service-worker.ts`)** — precaches the app shell (cache-first) and runtime-caches API GETs, SvelteKit `__data.json`, and page navigations network-first, falling back to the last cached response, then a synthetic `503 {offline:true}` so an uncached GET surfaces as a catchable `ApiError` rather than an uncaught fetch rejection. Registered only in production (`!dev`), so offline behavior is exercised via `npm run build && npm run preview`, not `vite dev`.
+
+**Write queue (`src/lib/offline/outbox.ts`)** — a durable IndexedDB queue of `score` and `complete` entries, keyed per-target so re-scoring a hole upserts in place. `saveScoring` writes through then tries the network (keeps the entry on network failure, drops + rethrows on a real server rejection); `queueComplete` enqueues a completion. `flush()` replays oldest-first and is drained from `+layout.svelte` on load and on the `online` event.
+
+**Read reconciliation (`src/lib/offline/merge.ts`, pure + unit-tested)** — loads overlay the outbox so offline state isn't stale: `mergeScorings` overlays queued holes onto a round's scorings (round detail, hole, and per-round stats pages); `applyPendingComplete` flips a round finished offline to `complete` (round detail + list); `overlayRoundSummary` adds a per-round `pendingSync` count to the history list. Exact list-level stroke totals are intentionally *not* recomputed offline (the summary lacks per-hole pars and can't dedupe re-scores) — the fully-merged scorecard on the round page is the accurate offline view, and totals reconcile on sync. Aggregate `/stats` is server-computed and shows an "unavailable offline" state when uncached.
+
+**Connection indicator (`src/lib/offline/status.ts`, `OfflineIndicator.svelte`)** — a small app-wide banner driven by `navigator.onLine` / the `online`/`offline` events plus the outbox count: shows "Offline — N change(s) will sync…" when disconnected and "Syncing N…" while draining a backlog, hidden when online with an empty queue.
+
+Creation of new rounds/courses while offline is out of scope for now — it needs client-generated temp ids and an id-remap step in `flush()` (a later phase); today those POSTs require a connection.
+
 ## Future enhancements
 
 - Simplified, clearly-labeled handicap estimate, then full World Handicap System.

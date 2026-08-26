@@ -43,7 +43,11 @@
 						{#if round.status === 'complete'}
 							<span class="score">{round.totalStrokes} ({toParLabel(round)})</span>
 						{:else}
-							<span class="score muted">{round.holesScored} of {round.holeCount} scored</span>
+							<span class="score muted">
+								{round.holesScored} of {round.holeCount} scored
+								{#if round.pendingSync}<span class="pending">· {round.pendingSync} unsynced</span
+									>{/if}
+							</span>
 						{/if}
 					</div>
 				</a>
@@ -141,5 +145,10 @@
 		font-weight: 400;
 		color: #666;
 		font-size: 0.9rem;
+	}
+
+	.pending {
+		color: #8a6100;
+		font-weight: 600;
 	}
 </style>

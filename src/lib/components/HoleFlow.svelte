@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { ApiError } from '$lib/api';
 	import { saveScoring } from '$lib/offline/outbox';
+	import { refreshPending } from '$lib/offline/status';
 	import {
 		answersFromFacts,
 		currentStep,
@@ -101,6 +102,8 @@
 			// Records the hole locally then sends it; offline it stays queued and we
 			// advance anyway (it syncs on reconnect). A real server rejection throws.
 			await saveScoring(round.id, holeNumber, facts, fetch);
+			// Keep the offline indicator's pending count in sync with the outbox.
+			void refreshPending();
 			// Scoring a hole for the first time advances to the next hole (play-through);
 			// re-scoring an already-scored hole, or finishing the last hole, returns to
 			// the hub. Driven by round data, so it works however the hole was opened.

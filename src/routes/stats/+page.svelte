@@ -5,15 +5,19 @@
 	let { data } = $props();
 
 	// Default to 18 unless the golfer only has 9-hole rounds. Initial default only —
-	// the toggle drives it after mount.
+	// the toggle drives it after mount. (data.stats is null when offline with no cache.)
 	// svelte-ignore state_referenced_locally
 	let selected = $state<'eighteen' | 'nine'>(
-		data.stats.eighteen.roundsPlayed === 0 && data.stats.nine.roundsPlayed > 0 ? 'nine' : 'eighteen'
+		data.stats && data.stats.eighteen.roundsPlayed === 0 && data.stats.nine.roundsPlayed > 0
+			? 'nine'
+			: 'eighteen'
 	);
 
-	const s = $derived(data.stats[selected]);
+	const s = $derived(data.stats?.[selected]);
 	const lengthLabel = $derived(selected === 'eighteen' ? '18-hole' : '9-hole');
-	const hasAny = $derived(data.stats.eighteen.roundsPlayed + data.stats.nine.roundsPlayed > 0);
+	const hasAny = $derived(
+		data.stats ? data.stats.eighteen.roundsPlayed + data.stats.nine.roundsPlayed > 0 : false
+	);
 
 	const avg = (v: number | null) => (v === null ? '—' : v.toFixed(1));
 	const pct = (v: number | null) => (v === null ? '—' : `${Math.round(v)}%`);
@@ -21,12 +25,17 @@
 
 <h1>Stats</h1>
 
-{#if !hasAny}
+{#if data.offline}
+	<p class="empty">
+		Stats aren't available offline — they're calculated from all your rounds on the server.
+		Reconnect to see your scoring average, putts, fairways, and greens in regulation.
+	</p>
+{:else if !hasAny}
 	<p class="empty">
 		No stats yet. <a href={resolve('/rounds/new')}>Play and finish a round</a> to see your scoring average,
 		putts, fairways, and greens in regulation.
 	</p>
-{:else}
+{:else if s}
 	<div class="toggle" role="group" aria-label="Round length">
 		<button class:active={selected === 'eighteen'} onclick={() => (selected = 'eighteen')}>
 			18 holes

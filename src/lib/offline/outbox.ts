@@ -40,6 +40,33 @@ export async function pendingScores(roundId: string): Promise<PendingScore[]> {
 		.map((e) => ({ holeNumber: e.holeNumber, facts: e.facts }));
 }
 
+/** Round ids with a queued completion, for overlaying "complete" status offline. */
+export async function pendingCompletes(): Promise<string[]> {
+	const entries = await idbGetAll<OutboxEntry>();
+	return entries.filter((e): e is CompleteEntry => e.type === 'complete').map((e) => e.roundId);
+}
+
+/**
+ * Queued score-hole numbers grouped by round id — lets the rounds list show a
+ * per-round "unsynced" count without fetching each round's detail.
+ */
+export async function pendingScoreHolesByRound(): Promise<Map<string, number[]>> {
+	const entries = await idbGetAll<OutboxEntry>();
+	const byRound = new Map<string, number[]>();
+	for (const e of entries) {
+		if (e.type !== 'score') continue;
+		const holes = byRound.get(e.roundId) ?? [];
+		holes.push(e.holeNumber);
+		byRound.set(e.roundId, holes);
+	}
+	return byRound;
+}
+
+/** Total number of entries still waiting to sync, for the status indicator. */
+export async function pendingCount(): Promise<number> {
+	return (await idbGetAll<OutboxEntry>()).length;
+}
+
 /**
  * Record a hole: queue it durably, then try to send. A real server rejection
  * (ApiError) is surfaced; a network failure leaves it queued and resolves

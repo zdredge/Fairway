@@ -1,4 +1,4 @@
-import type { ApiScoring, ScoringFacts } from '$lib/types';
+import type { ApiRoundSummary, ApiScoring, RoundStatus, ScoringFacts } from '$lib/types';
 
 /** A scoring still waiting in the outbox (no server id yet). */
 export interface PendingScore {
@@ -29,4 +29,37 @@ export function mergeScorings(serverScorings: ApiScoring[], pending: PendingScor
 	}
 
 	return [...byHole.values()].sort((a, b) => a.holeNumber - b.holeNumber);
+}
+
+/**
+ * Overlay a queued completion onto a round's status: a round finished offline
+ * reads as 'complete' even though the server hasn't seen the PATCH yet. Never
+ * downgrades — a server-complete round stays complete.
+ */
+export function applyPendingComplete(
+	status: RoundStatus,
+	hasPendingComplete: boolean
+): RoundStatus {
+	return hasPendingComplete ? 'complete' : status;
+}
+
+/**
+ * Overlay pending outbox state onto one round summary for the history list.
+ * Flips status when a completion is queued and reports how many of this round's
+ * holes are still unsynced (`pendingSync`). Stroke/par totals are intentionally
+ * left untouched — the summary lacks per-hole pars and can't tell a re-score from
+ * a new hole, so exact totals reconcile on sync; the merged scorecard on the
+ * round page is the accurate offline view. Pure, so it's unit-testable.
+ */
+export function overlayRoundSummary(
+	summary: ApiRoundSummary,
+	pending: { pendingScoreHoles: number[]; hasPendingComplete: boolean }
+): ApiRoundSummary {
+	const pendingSync = pending.pendingScoreHoles.length;
+	if (pendingSync === 0 && !pending.hasPendingComplete) return summary;
+	return {
+		...summary,
+		status: applyPendingComplete(summary.status, pending.hasPendingComplete),
+		pendingSync
+	};
 }

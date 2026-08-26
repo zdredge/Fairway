@@ -5,6 +5,8 @@
 	import { resolve } from '$app/paths';
 	import { apiFetch } from '$lib/api';
 	import { flush } from '$lib/offline/outbox';
+	import { initOfflineStatus, refreshPending } from '$lib/offline/status';
+	import OfflineIndicator from '$lib/components/OfflineIndicator.svelte';
 	import favicon from '$lib/assets/favicon.svg';
 
 	let { children, data } = $props();
@@ -14,6 +16,7 @@
 	// SvelteKit builds the service worker but doesn't auto-register it — do it here
 	// (production only, to avoid interfering with the dev HMR socket).
 	onMount(() => {
+		initOfflineStatus();
 		if (!dev && 'serviceWorker' in navigator) {
 			navigator.serviceWorker
 				.register('/service-worker.js')
@@ -22,12 +25,13 @@
 	});
 
 	// Drain the offline outbox while signed in: on load/login and on every reconnect.
+	// Refresh the pending count after each flush so the indicator reflects reality.
 	$effect(() => {
 		if (!data.user) return;
-		flush(fetch);
-		const onOnline = () => flush(fetch);
-		window.addEventListener('online', onOnline);
-		return () => window.removeEventListener('online', onOnline);
+		const drain = () => flush(fetch).then(refreshPending);
+		drain();
+		window.addEventListener('online', drain);
+		return () => window.removeEventListener('online', drain);
 	});
 
 	async function signOut() {
@@ -61,6 +65,9 @@
 	</header>
 
 	<main>
+		{#if data.user}
+			<OfflineIndicator />
+		{/if}
 		{@render children()}
 	</main>
 </div>

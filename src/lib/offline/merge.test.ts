@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'vitest';
-import type { ApiScoring, ScoringFacts } from '$lib/types';
-import { mergeScorings, type PendingScore } from './merge';
+import type { ApiRoundSummary, ApiScoring, ScoringFacts } from '$lib/types';
+import {
+	applyPendingComplete,
+	mergeScorings,
+	overlayRoundSummary,
+	type PendingScore
+} from './merge';
 
 function server(holeNumber: number, strokes: number): ApiScoring {
 	return {
@@ -48,5 +53,68 @@ describe('mergeScorings', () => {
 	test('result is sorted by hole number', () => {
 		const merged = mergeScorings([server(3, 3)], [pending(1, 4), pending(2, 5)]);
 		expect(merged.map((m) => m.holeNumber)).toEqual([1, 2, 3]);
+	});
+});
+
+describe('applyPendingComplete', () => {
+	test('flips in_progress to complete when a completion is queued', () => {
+		expect(applyPendingComplete('in_progress', true)).toBe('complete');
+	});
+
+	test('leaves status unchanged with nothing queued', () => {
+		expect(applyPendingComplete('in_progress', false)).toBe('in_progress');
+	});
+
+	test('never downgrades an already-complete round', () => {
+		expect(applyPendingComplete('complete', false)).toBe('complete');
+	});
+});
+
+describe('overlayRoundSummary', () => {
+	function summary(overrides: Partial<ApiRoundSummary> = {}): ApiRoundSummary {
+		return {
+			id: 'r1',
+			courseName: 'Pebble Creek',
+			holeCount: 18,
+			playedOn: '2026-08-26T12:00:00.000Z',
+			tee: null,
+			status: 'in_progress',
+			holesScored: 3,
+			totalStrokes: 12,
+			totalPar: 12,
+			...overrides
+		};
+	}
+
+	test('returns the same object when nothing is pending', () => {
+		const s = summary();
+		expect(overlayRoundSummary(s, { pendingScoreHoles: [], hasPendingComplete: false })).toBe(s);
+	});
+
+	test('reports the pending unsynced hole count', () => {
+		const merged = overlayRoundSummary(summary(), {
+			pendingScoreHoles: [4, 5],
+			hasPendingComplete: false
+		});
+		expect(merged.pendingSync).toBe(2);
+		expect(merged.status).toBe('in_progress');
+	});
+
+	test('flips status to complete for a queued completion', () => {
+		const merged = overlayRoundSummary(summary(), {
+			pendingScoreHoles: [],
+			hasPendingComplete: true
+		});
+		expect(merged.status).toBe('complete');
+		expect(merged.pendingSync).toBe(0);
+	});
+
+	test('leaves server stroke/par totals untouched', () => {
+		const merged = overlayRoundSummary(summary({ totalStrokes: 20, totalPar: 18 }), {
+			pendingScoreHoles: [4],
+			hasPendingComplete: false
+		});
+		expect(merged.totalStrokes).toBe(20);
+		expect(merged.totalPar).toBe(18);
 	});
 });

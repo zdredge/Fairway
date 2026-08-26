@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { apiFetch, ApiError } from '$lib/api';
 	import { queueComplete } from '$lib/offline/outbox';
+	import { refreshPending } from '$lib/offline/status';
 	import Scorecard from '$lib/components/Scorecard.svelte';
 
 	let { data } = $props();
@@ -56,8 +57,12 @@
 			if (err instanceof ApiError) {
 				finishError = err.message;
 			} else {
-				// Offline: queue the completion; it finishes on reconnect.
+				// Offline: queue the completion; it finishes on reconnect. Re-run the
+				// page load (served from cache, no network) so the pending-complete
+				// overlay flips the badge to Complete right now instead of on reconnect.
 				await queueComplete(round.id);
+				void refreshPending();
+				await invalidate((url) => url.pathname === `/api/rounds/${round.id}`);
 				finishNote = "You're offline — this round will finish when you reconnect.";
 			}
 		} finally {

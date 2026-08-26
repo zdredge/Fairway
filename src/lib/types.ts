@@ -96,6 +96,12 @@ export interface ApiRoundSummary {
 	holesScored: number;
 	totalStrokes: number;
 	totalPar: number;
+	/**
+	 * Client-only overlay: how many holes for this round are still queued in the
+	 * offline outbox (not yet synced). Absent/0 when everything is synced. The
+	 * server never sets this — it's added by the rounds-list load offline.
+	 */
+	pendingSync?: number;
 }
 
 export interface ApiRoundDetail extends ApiRound {
