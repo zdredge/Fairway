@@ -1,7 +1,10 @@
 import { error, redirect } from '@sveltejs/kit';
+import { browser } from '$app/environment';
 import type { PageLoad } from './$types';
 import { apiFetch, ApiError } from '$lib/api';
 import { resolve } from '$app/paths';
+import { mergeScorings } from '$lib/offline/merge';
+import { pendingScores } from '$lib/offline/outbox';
 import type { ApiRoundDetail } from '$lib/types';
 
 export const load: PageLoad = async ({ fetch, params }) => {
@@ -15,6 +18,9 @@ export const load: PageLoad = async ({ fetch, params }) => {
 		if (err instanceof ApiError && err.status === 404) error(404, 'Round not found');
 		throw err;
 	}
+
+	// Overlay pending offline scorings so re-scoring a queued hole opens prefilled.
+	if (browser) round.scorings = mergeScorings(round.scorings, await pendingScores(round.id));
 
 	// A completed round can't be scored — send the user back to the read-only hub.
 	if (round.status === 'complete') redirect(303, resolve('/rounds/[id]', { id: params.id }));

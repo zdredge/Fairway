@@ -2,6 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { apiFetch, ApiError } from '$lib/api';
+	import { queueComplete } from '$lib/offline/outbox';
 	import Scorecard from '$lib/components/Scorecard.svelte';
 
 	let { data } = $props();
@@ -35,6 +36,7 @@
 
 	let finishing = $state(false);
 	let finishError = $state('');
+	let finishNote = $state('');
 
 	function holeHref(n: number) {
 		return resolve('/rounds/[id]/holes/[n]', { id: round.id, n: String(n) });
@@ -43,6 +45,7 @@
 	async function finish() {
 		finishing = true;
 		finishError = '';
+		finishNote = '';
 		try {
 			await apiFetch(fetch, `/api/rounds/${round.id}`, {
 				method: 'PATCH',
@@ -50,7 +53,13 @@
 			});
 			await invalidateAll();
 		} catch (err) {
-			finishError = err instanceof ApiError ? err.message : 'Could not finish the round';
+			if (err instanceof ApiError) {
+				finishError = err.message;
+			} else {
+				// Offline: queue the completion; it finishes on reconnect.
+				await queueComplete(round.id);
+				finishNote = "You're offline — this round will finish when you reconnect.";
+			}
 		} finally {
 			finishing = false;
 		}
@@ -99,6 +108,9 @@
 	</div>
 	{#if finishError}
 		<p class="error">{finishError}</p>
+	{/if}
+	{#if finishNote}
+		<p class="note">{finishNote}</p>
 	{/if}
 {:else}
 	<div class="final">
@@ -186,6 +198,10 @@
 
 	.error {
 		color: #a4231a;
+	}
+
+	.note {
+		color: #8a6100;
 	}
 
 	.final {

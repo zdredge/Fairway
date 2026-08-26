@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { apiFetch, ApiError } from '$lib/api';
+	import { ApiError } from '$lib/api';
+	import { saveScoring } from '$lib/offline/outbox';
 	import {
 		answersFromFacts,
 		currentStep,
@@ -97,22 +98,26 @@
 		errors = [];
 		try {
 			const facts = toScoringFacts(par, answers);
-			await apiFetch(fetch, `/api/rounds/${round.id}/scores`, {
-				method: 'POST',
-				body: { holeNumber, ...facts }
-			});
+			// Records the hole locally then sends it; offline it stays queued and we
+			// advance anyway (it syncs on reconnect). A real server rejection throws.
+			await saveScoring(round.id, holeNumber, facts, fetch);
 			// Scoring a hole for the first time advances to the next hole (play-through);
 			// re-scoring an already-scored hole, or finishing the last hole, returns to
 			// the hub. Driven by round data, so it works however the hole was opened.
 			const isReScore = existing != null;
+			// Plain goto (no invalidateAll): navigating to a different route reruns that
+			// page's universal load, which re-fetches the (cached) round and overlays the
+			// just-queued scoring via mergeScorings. invalidateAll would additionally force
+			// the root server load's __data.json — an *uncached* URL for a not-yet-visited
+			// hole — which fails hard offline and breaks the whole save.
 			if (!isReScore && holeNumber < round.holeCount) {
 				const nextHref = resolve('/rounds/[id]/holes/[n]', {
 					id: round.id,
 					n: String(holeNumber + 1)
 				});
-				await goto(nextHref, { invalidateAll: true });
+				await goto(nextHref);
 			} else {
-				await goto(hubHref, { invalidateAll: true });
+				await goto(hubHref);
 			}
 		} catch (err) {
 			errors =

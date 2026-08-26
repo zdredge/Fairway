@@ -1,12 +1,34 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { dev } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { apiFetch } from '$lib/api';
+	import { flush } from '$lib/offline/outbox';
 	import favicon from '$lib/assets/favicon.svg';
 
 	let { children, data } = $props();
 
 	let signingOut = $state(false);
+
+	// SvelteKit builds the service worker but doesn't auto-register it — do it here
+	// (production only, to avoid interfering with the dev HMR socket).
+	onMount(() => {
+		if (!dev && 'serviceWorker' in navigator) {
+			navigator.serviceWorker
+				.register('/service-worker.js')
+				.catch((err) => console.error('Service worker registration failed:', err));
+		}
+	});
+
+	// Drain the offline outbox while signed in: on load/login and on every reconnect.
+	$effect(() => {
+		if (!data.user) return;
+		flush(fetch);
+		const onOnline = () => flush(fetch);
+		window.addEventListener('online', onOnline);
+		return () => window.removeEventListener('online', onOnline);
+	});
 
 	async function signOut() {
 		signingOut = true;
