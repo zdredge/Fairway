@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { dev } from '$app/environment';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { apiFetch } from '$lib/api';
+	import { activeRound, clearActiveRound } from '$lib/offline/activeRound';
 	import { flush } from '$lib/offline/outbox';
 	import { initOfflineStatus, refreshPending } from '$lib/offline/status';
 	import OfflineIndicator from '$lib/components/OfflineIndicator.svelte';
@@ -12,6 +14,14 @@
 	let { children, data } = $props();
 
 	let signingOut = $state(false);
+
+	// Show a "Resume round" pill whenever the user has an active round and isn't
+	// already on that round's pages (detail / holes / stats).
+	const resumeRound = $derived(
+		$activeRound && !page.url.pathname.startsWith(`/rounds/${$activeRound.id}`)
+			? $activeRound
+			: null
+	);
 
 	// SvelteKit builds the service worker but doesn't auto-register it — do it here
 	// (production only, to avoid interfering with the dev HMR socket).
@@ -39,6 +49,7 @@
 		try {
 			await apiFetch(fetch, '/api/auth/logout', { method: 'POST' });
 		} finally {
+			clearActiveRound(); // don't leak the active round to the next user
 			await goto(resolve('/login'), { invalidateAll: true });
 			signingOut = false;
 		}
@@ -67,6 +78,13 @@
 	<main>
 		{#if data.user}
 			<OfflineIndicator />
+			{#if resumeRound}
+				<a class="resume" href={resolve('/rounds/[id]', { id: resumeRound.id })}>
+					<span class="dot" aria-hidden="true"></span>
+					<span class="resume-text">Resume round · {resumeRound.courseName}</span>
+					<span class="arrow" aria-hidden="true">→</span>
+				</a>
+			{/if}
 		{/if}
 		{@render children()}
 	</main>
@@ -99,6 +117,43 @@
 		display: flex;
 		align-items: center;
 		gap: 1rem;
+	}
+
+	.resume {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin: 0 0 0.75rem;
+		padding: 0.6rem 0.85rem;
+		border: 1px solid #1a7a3a;
+		border-radius: 0.5rem;
+		background: #e2f4e8;
+		color: #1a7a3a;
+		font-weight: 600;
+		text-decoration: none;
+	}
+
+	.resume:hover {
+		background: #d3eddc;
+	}
+
+	.resume .dot {
+		width: 0.6rem;
+		height: 0.6rem;
+		border-radius: 50%;
+		background: #1a7a3a;
+		flex: none;
+	}
+
+	.resume-text {
+		flex: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.resume .arrow {
+		flex: none;
 	}
 
 	nav a {

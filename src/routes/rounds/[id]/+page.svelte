@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { invalidate, invalidateAll } from '$app/navigation';
+	import { browser } from '$app/environment';
 	import { resolve } from '$app/paths';
 	import { apiFetch, ApiError } from '$lib/api';
+	import { clearActiveRoundIf, setActiveRound } from '$lib/offline/activeRound';
 	import { queueComplete } from '$lib/offline/outbox';
 	import { refreshPending } from '$lib/offline/status';
 	import Scorecard from '$lib/components/Scorecard.svelte';
@@ -10,6 +12,14 @@
 
 	const round = $derived(data.round);
 	const complete = $derived(round.status === 'complete');
+
+	// Remember this as the round the user is playing so a global "Resume round"
+	// pill can bring them back; clear it once the round is complete.
+	$effect(() => {
+		if (!browser) return;
+		if (complete) clearActiveRoundIf(round.id);
+		else setActiveRound({ id: round.id, courseName: round.course.name });
+	});
 
 	const played = $derived(
 		new Date(round.playedOn).toLocaleDateString(undefined, {

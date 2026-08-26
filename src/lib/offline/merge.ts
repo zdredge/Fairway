@@ -63,3 +63,20 @@ export function overlayRoundSummary(
 		pendingSync
 	};
 }
+
+/**
+ * Pick which round is "current" for the list badge / resume affordance. Prefers
+ * the round the user last opened (`activeId`) when it's present and still in
+ * progress; otherwise the most-recent in-progress round (the list is ordered
+ * newest-first). Returns null when nothing is in progress. Pure/testable.
+ */
+export function pickCurrentRoundId(
+	rounds: ApiRoundSummary[],
+	activeId: string | null
+): string | null {
+	if (activeId) {
+		const active = rounds.find((r) => r.id === activeId);
+		if (active && active.status !== 'complete') return active.id;
+	}
+	return rounds.find((r) => r.status !== 'complete')?.id ?? null;
+}

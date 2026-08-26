@@ -1,7 +1,15 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
+	import { setActiveRound } from '$lib/offline/activeRound';
 	import HoleFlow from '$lib/components/HoleFlow.svelte';
 
 	let { data } = $props();
+
+	// Scoring a hole means this is the round in play — register it for the global
+	// "Resume round" pill (hole pages are only reachable while in progress).
+	$effect(() => {
+		if (browser) setActiveRound({ id: data.round.id, courseName: data.round.course.name });
+	});
 </script>
 
 <!-- Key on the hole number: navigating hole→hole is the same route, so without

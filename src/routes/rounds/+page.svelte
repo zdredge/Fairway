@@ -1,8 +1,14 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { activeRound } from '$lib/offline/activeRound';
+	import { pickCurrentRoundId } from '$lib/offline/merge';
 	import type { ApiRoundSummary } from '$lib/types';
 
 	let { data } = $props();
+
+	// The round to flag as "current": the one the user is playing (last opened, via
+	// the store) or, failing that, the most-recent in-progress round in the list.
+	const currentId = $derived(pickCurrentRoundId(data.rounds, $activeRound?.id ?? null));
 
 	function dateLabel(iso: string) {
 		return new Date(iso).toLocaleDateString(undefined, {
@@ -23,7 +29,12 @@
 	<a class="btn" href={resolve('/rounds/new')}>Start a round</a>
 </div>
 
-{#if data.rounds.length === 0}
+{#if data.offline}
+	<p class="empty">
+		Your rounds aren't available offline yet — reconnect to load them. If you have a round in
+		progress, use the “Resume round” button above to get back to it.
+	</p>
+{:else if data.rounds.length === 0}
 	<p class="empty">
 		No rounds yet. <a href={resolve('/rounds/new')}>Start a round</a> to begin tracking your golf.
 	</p>
@@ -38,6 +49,9 @@
 							{round.status === 'complete' ? 'Complete' : 'In progress'}
 						</span>
 					</div>
+					{#if round.id === currentId}
+						<div class="current"><span class="dot" aria-hidden="true"></span> Current Round</div>
+					{/if}
 					<div class="bottom">
 						<span class="date">{dateLabel(round.playedOn)} · {round.holeCount} holes</span>
 						{#if round.status === 'complete'}
@@ -150,5 +164,22 @@
 	.pending {
 		color: #8a6100;
 		font-weight: 600;
+	}
+
+	.current {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		margin-top: 0.35rem;
+		color: #1a7a3a;
+		font-size: 0.8rem;
+		font-weight: 700;
+	}
+
+	.current .dot {
+		width: 0.6rem;
+		height: 0.6rem;
+		border-radius: 50%;
+		background: #1a7a3a;
 	}
 </style>

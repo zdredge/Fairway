@@ -4,6 +4,7 @@ import {
 	applyPendingComplete,
 	mergeScorings,
 	overlayRoundSummary,
+	pickCurrentRoundId,
 	type PendingScore
 } from './merge';
 
@@ -116,5 +117,45 @@ describe('overlayRoundSummary', () => {
 		});
 		expect(merged.totalStrokes).toBe(20);
 		expect(merged.totalPar).toBe(18);
+	});
+});
+
+describe('pickCurrentRoundId', () => {
+	function sum(id: string, status: ApiRoundSummary['status']): ApiRoundSummary {
+		return {
+			id,
+			courseName: 'Course',
+			holeCount: 18,
+			playedOn: '2026-08-26T12:00:00.000Z',
+			tee: null,
+			status,
+			holesScored: 0,
+			totalStrokes: 0,
+			totalPar: 0
+		};
+	}
+
+	test('returns null when nothing is in progress', () => {
+		expect(pickCurrentRoundId([sum('a', 'complete')], null)).toBeNull();
+	});
+
+	test('picks the most-recent in-progress round when no active id (list is newest-first)', () => {
+		const rounds = [sum('newer', 'in_progress'), sum('older', 'in_progress')];
+		expect(pickCurrentRoundId(rounds, null)).toBe('newer');
+	});
+
+	test('prefers the active round when it is present and in progress', () => {
+		const rounds = [sum('newer', 'in_progress'), sum('older', 'in_progress')];
+		expect(pickCurrentRoundId(rounds, 'older')).toBe('older');
+	});
+
+	test('ignores an active id that is complete, falling back to most-recent in-progress', () => {
+		const rounds = [sum('newer', 'in_progress'), sum('done', 'complete')];
+		expect(pickCurrentRoundId(rounds, 'done')).toBe('newer');
+	});
+
+	test('ignores an active id not in the list', () => {
+		const rounds = [sum('a', 'in_progress')];
+		expect(pickCurrentRoundId(rounds, 'ghost')).toBe('a');
 	});
 });

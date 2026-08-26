@@ -66,6 +66,16 @@ async function networkFirst(request: Request): Promise<Response> {
 		// Offline. Serve the last-seen copy if we have one.
 		const cached = await cache.match(request);
 		if (cached) return cached;
+		// A hard load of a never-cached page: return a small HTML shell, not the
+		// API JSON below (a browser would render that JSON as raw page text).
+		// In-app client-side navigations don't hit this — their data fetch gets the
+		// JSON 503 and the page's load renders its own offline state.
+		if (request.mode === 'navigate') {
+			return new Response(OFFLINE_HTML, {
+				status: 503,
+				headers: { 'content-type': 'text/html; charset=utf-8' }
+			});
+		}
 		// Nothing cached: resolve with a synthetic 503 rather than letting the
 		// rejection propagate out of respondWith(). A rejected FetchEvent surfaces
 		// as an uncaught "TypeError: Failed to fetch" plus a console network error,
@@ -77,5 +87,34 @@ async function networkFirst(request: Request): Promise<Response> {
 		});
 	}
 }
+
+// Minimal, self-contained page shown when a never-before-seen route is opened
+// (or hard-refreshed) with no connection. Reconnecting + Retry loads the app,
+// after which in-app navigation works offline against the cache.
+const OFFLINE_HTML = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Offline · Fairway</title>
+<style>
+	body { margin: 0; min-height: 100vh; display: grid; place-items: center;
+		font-family: system-ui, sans-serif; color: #222; background: #fff; padding: 1.5rem; }
+	.card { max-width: 22rem; text-align: center; }
+	h1 { color: #1a7a3a; font-size: 1.35rem; margin: 0 0 0.5rem; }
+	p { color: #555; line-height: 1.5; margin: 0 0 1.25rem; }
+	button { font: inherit; font-weight: 600; color: #fff; background: #1a7a3a;
+		border: none; border-radius: 0.5rem; padding: 0.6rem 1.1rem; cursor: pointer; }
+</style>
+</head>
+<body>
+	<div class="card">
+		<h1>You're offline</h1>
+		<p>This page hasn't been loaded before, so it isn't available offline yet.
+		Reconnect and try again — pages you've already visited stay available.</p>
+		<button onclick="location.reload()">Retry</button>
+	</div>
+</body>
+</html>`;
 
 export {};
