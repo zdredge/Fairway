@@ -23,8 +23,8 @@
 		align-items: center;
 		text-align: center;
 		gap: 0.35rem;
-		border: 1px solid #e2e2e2;
-		border-radius: 0.5rem;
+		border: 1px solid var(--border-card);
+		border-radius: var(--radius);
 		padding: 1rem;
 	}
 
@@ -32,19 +32,21 @@
 		font-size: 0.8rem;
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
-		color: #666;
+		color: var(--faint);
 	}
 
 	.value {
-		font-size: 2rem;
+		/* Shrinks on narrow tiles so a long value like "2.9 / 4.0 / 5.1" doesn't overflow. */
+		font-size: clamp(1.35rem, 6vw, 2rem);
 		font-weight: 700;
-		color: #1a7a3a;
+		color: var(--green);
 		font-variant-numeric: tabular-nums;
 		line-height: 1.1;
+		max-width: 100%;
 	}
 
 	.sub {
-		color: #666;
+		color: var(--faint);
 		font-size: 0.9rem;
 	}
 </style>

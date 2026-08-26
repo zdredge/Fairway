@@ -34,13 +34,13 @@
 		font-size: 0.9rem;
 		font-weight: 600;
 		/* Online-but-syncing: green/informational. */
-		background: #e2f4e8;
-		color: #1a7a3a;
+		background: var(--green-tint);
+		color: var(--green);
 	}
 
 	.indicator.offline {
-		background: #fff4d6;
-		color: #8a6100;
+		background: var(--amber-bg);
+		color: var(--amber-ink);
 	}
 
 	.dot {

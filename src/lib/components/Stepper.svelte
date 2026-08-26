@@ -40,9 +40,9 @@
 		width: 3.5rem;
 		height: 3.5rem;
 		border-radius: 50%;
-		border: 2px solid #1a7a3a;
-		background: #fff;
-		color: #1a7a3a;
+		border: 2px solid var(--green);
+		background: var(--bg);
+		color: var(--green);
 		font-size: 1.75rem;
 		line-height: 1;
 		cursor: pointer;

@@ -57,7 +57,12 @@
 
 <h1>Start a round</h1>
 
-{#if data.courses.length === 0}
+{#if data.offline}
+	<p class="empty">
+		Starting a round needs your course list, which isn't available offline. Reconnect to start a new
+		round.
+	</p>
+{:else if data.courses.length === 0}
 	<p class="empty">
 		You need a course first. <a href={resolve('/courses/new')}>Create a course</a>, then come back
 		to start a round.
@@ -114,7 +119,7 @@
 			</ul>
 		{/if}
 
-		<button class="btn" type="submit" disabled={submitting}>
+		<button class="btn btn-primary" type="submit" disabled={submitting}>
 			{submitting ? 'Starting…' : 'Start round'}
 		</button>
 	</form>
@@ -138,8 +143,8 @@
 	input,
 	select {
 		padding: 0.45rem 0.5rem;
-		border: 1px solid #ccc;
-		border-radius: 0.375rem;
+		border: 1px solid var(--border-input);
+		border-radius: var(--radius-sm);
 		font: inherit;
 	}
 
@@ -156,36 +161,14 @@
 	}
 
 	.length .disabled {
-		color: #999;
+		color: var(--subtle);
 	}
 
 	.empty {
-		color: #555;
-	}
-
-	.errors {
-		margin: 0;
-		padding: 0.75rem 1rem 0.75rem 2rem;
-		background: #fdecea;
-		border: 1px solid #f5c6c0;
-		border-radius: 0.375rem;
-		color: #a4231a;
+		color: var(--muted);
 	}
 
 	.btn {
-		background: #1a7a3a;
-		color: #fff;
-		border: none;
-		padding: 0.6rem 1rem;
-		border-radius: 0.375rem;
-		font: inherit;
-		font-weight: 600;
-		cursor: pointer;
 		align-self: flex-start;
-	}
-
-	.btn:disabled {
-		opacity: 0.6;
-		cursor: default;
 	}
 </style>

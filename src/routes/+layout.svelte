@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { dev } from '$app/environment';
-	import { page } from '$app/state';
+	import { navigating, page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { apiFetch } from '$lib/api';
@@ -10,10 +10,14 @@
 	import { initOfflineStatus, refreshPending } from '$lib/offline/status';
 	import OfflineIndicator from '$lib/components/OfflineIndicator.svelte';
 	import favicon from '$lib/assets/favicon.svg';
+	import '../app.css';
 
 	let { children, data } = $props();
 
 	let signingOut = $state(false);
+
+	// A client-side navigation is in flight — drives the thin top progress bar.
+	const isNavigating = $derived(navigating.to != null);
 
 	// Show a "Resume round" pill whenever the user has an active round and isn't
 	// already on that round's pages (detail / holes / stats).
@@ -60,6 +64,10 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
+{#if isNavigating}
+	<div class="loading-bar" role="progressbar" aria-label="Loading"></div>
+{/if}
+
 <div class="app">
 	<header>
 		<a href={resolve('/')} class="brand">Fairway</a>
@@ -92,31 +100,69 @@
 
 <style>
 	.app {
-		max-width: 40rem;
+		max-width: var(--page-max);
 		margin: 0 auto;
 		padding: 0 1rem;
-		font-family: system-ui, sans-serif;
+	}
+
+	/* Thin top progress bar during client-side navigation. */
+	.loading-bar {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 3px;
+		z-index: 100;
+		background: var(--green);
+		transform-origin: 0 50%;
+		animation: loading-slide 1.1s ease-in-out infinite;
+	}
+
+	@keyframes loading-slide {
+		0% {
+			transform: scaleX(0);
+			opacity: 1;
+		}
+		60% {
+			transform: scaleX(0.9);
+		}
+		100% {
+			transform: scaleX(1);
+			opacity: 0.4;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.loading-bar {
+			animation: none;
+			transform: scaleX(1);
+			opacity: 0.7;
+		}
 	}
 
 	header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+		/* Wrap the nav below the brand on very narrow phones instead of clipping. */
+		flex-wrap: wrap;
+		gap: 0.25rem 1rem;
 		padding: 1rem 0;
-		border-bottom: 1px solid #ddd;
+		border-bottom: 1px solid var(--border);
 	}
 
 	.brand {
 		font-weight: 700;
 		font-size: 1.25rem;
-		color: #1a7a3a;
+		color: var(--green);
 		text-decoration: none;
 	}
 
 	nav {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
+		flex-wrap: wrap;
+		gap: 0.5rem 1rem;
 	}
 
 	.resume {
@@ -125,23 +171,23 @@
 		gap: 0.5rem;
 		margin: 0 0 0.75rem;
 		padding: 0.6rem 0.85rem;
-		border: 1px solid #1a7a3a;
-		border-radius: 0.5rem;
-		background: #e2f4e8;
-		color: #1a7a3a;
+		border: 1px solid var(--green);
+		border-radius: var(--radius);
+		background: var(--green-tint);
+		color: var(--green);
 		font-weight: 600;
 		text-decoration: none;
 	}
 
 	.resume:hover {
-		background: #d3eddc;
+		background: var(--green-tint-hover);
 	}
 
 	.resume .dot {
 		width: 0.6rem;
 		height: 0.6rem;
 		border-radius: 50%;
-		background: #1a7a3a;
+		background: var(--green);
 		flex: none;
 	}
 
@@ -169,7 +215,7 @@
 		background: none;
 		border: none;
 		padding: 0;
-		color: #1a7a3a;
+		color: var(--green);
 		font: inherit;
 		cursor: pointer;
 	}

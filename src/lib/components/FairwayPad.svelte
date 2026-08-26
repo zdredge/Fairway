@@ -58,22 +58,22 @@
 
 	button {
 		padding: 1rem;
-		border: 2px solid #ccc;
-		border-radius: 0.5rem;
-		background: #fff;
+		border: 2px solid var(--border-input);
+		border-radius: var(--radius);
+		background: var(--bg);
 		font: inherit;
 		font-weight: 600;
 		cursor: pointer;
 	}
 
 	button:hover {
-		border-color: #1a7a3a;
+		border-color: var(--green);
 	}
 
 	button.selected {
-		border-color: #1a7a3a;
-		background: #e2f4e8;
-		color: #1a7a3a;
+		border-color: var(--green);
+		background: var(--green-tint);
+		color: var(--green);
 	}
 
 	.long {
@@ -93,13 +93,13 @@
 	.hit {
 		grid-area: hit;
 		border-radius: 50%;
-		border-color: #1a7a3a;
-		background: #e2f4e8;
-		color: #1a7a3a;
+		border-color: var(--green);
+		background: var(--green-tint);
+		color: var(--green);
 	}
 
 	.hit.selected {
-		background: #1a7a3a;
+		background: var(--green);
 		color: #fff;
 	}
 
@@ -107,6 +107,6 @@
 		margin: 1rem 0 0;
 		text-align: center;
 		font-size: 0.85rem;
-		color: #666;
+		color: var(--faint);
 	}
 </style>

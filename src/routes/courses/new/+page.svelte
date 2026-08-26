@@ -90,33 +90,35 @@
 		</label>
 	</fieldset>
 
-	<table class="holes">
-		<thead>
-			<tr><th>Hole</th><th>Par</th><th>Yardage (optional)</th></tr>
-		</thead>
-		<tbody>
-			{#each holes as hole, i (i)}
-				<tr>
-					<td class="num">{i + 1}</td>
-					<td>
-						<select bind:value={hole.par} aria-label={`Par for hole ${i + 1}`}>
-							<option value={3}>3</option>
-							<option value={4}>4</option>
-							<option value={5}>5</option>
-						</select>
-					</td>
-					<td>
-						<input
-							type="number"
-							min="1"
-							bind:value={hole.yardage}
-							aria-label={`Yardage for hole ${i + 1}`}
-						/>
-					</td>
-				</tr>
-			{/each}
-		</tbody>
-	</table>
+	<div class="table-wrap">
+		<table class="holes">
+			<thead>
+				<tr><th>Hole</th><th>Par</th><th>Yardage (optional)</th></tr>
+			</thead>
+			<tbody>
+				{#each holes as hole, i (i)}
+					<tr>
+						<td class="num">{i + 1}</td>
+						<td>
+							<select bind:value={hole.par} aria-label={`Par for hole ${i + 1}`}>
+								<option value={3}>3</option>
+								<option value={4}>4</option>
+								<option value={5}>5</option>
+							</select>
+						</td>
+						<td>
+							<input
+								type="number"
+								min="1"
+								bind:value={hole.yardage}
+								aria-label={`Yardage for hole ${i + 1}`}
+							/>
+						</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
 
 	<p class="total">Total par: <strong>{totalPar}</strong></p>
 
@@ -128,7 +130,7 @@
 		</ul>
 	{/if}
 
-	<button class="btn" type="submit" disabled={submitting}>
+	<button class="btn btn-primary" type="submit" disabled={submitting}>
 		{submitting ? 'Saving…' : 'Save course'}
 	</button>
 </form>
@@ -152,8 +154,8 @@
 	input[type='number'],
 	select {
 		padding: 0.45rem 0.5rem;
-		border: 1px solid #ccc;
-		border-radius: 0.375rem;
+		border: 1px solid var(--border-input);
+		border-radius: var(--radius-sm);
 		font: inherit;
 	}
 
@@ -169,15 +171,22 @@
 		margin-bottom: 0.35rem;
 	}
 
+	/* Let the per-hole table scroll sideways on narrow phones instead of overflowing. */
+	.table-wrap {
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+
 	.holes {
 		border-collapse: collapse;
 		width: 100%;
+		min-width: 18rem;
 	}
 
 	.holes th {
 		text-align: left;
 		font-size: 0.85rem;
-		color: #666;
+		color: var(--faint);
 		padding: 0.25rem 0.5rem;
 	}
 
@@ -191,37 +200,16 @@
 	}
 
 	.holes input[type='number'] {
-		width: 7rem;
+		width: 100%;
+		min-width: 4rem;
 	}
 
 	.total {
 		margin: 0;
-		color: #333;
-	}
-
-	.errors {
-		margin: 0;
-		padding: 0.75rem 1rem 0.75rem 2rem;
-		background: #fdecea;
-		border: 1px solid #f5c6c0;
-		border-radius: 0.375rem;
-		color: #a4231a;
+		color: var(--ink);
 	}
 
 	.btn {
-		background: #1a7a3a;
-		color: #fff;
-		border: none;
-		padding: 0.6rem 1rem;
-		border-radius: 0.375rem;
-		font: inherit;
-		font-weight: 600;
-		cursor: pointer;
 		align-self: flex-start;
-	}
-
-	.btn:disabled {
-		opacity: 0.6;
-		cursor: default;
 	}
 </style>

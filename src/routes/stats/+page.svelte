@@ -77,13 +77,13 @@
 
 <style>
 	.empty {
-		color: #555;
+		color: var(--muted);
 	}
 
 	.toggle {
 		display: inline-flex;
-		border: 1px solid #1a7a3a;
-		border-radius: 0.5rem;
+		border: 1px solid var(--green);
+		border-radius: var(--radius);
 		overflow: hidden;
 		margin: 0.5rem 0 1.25rem;
 	}
@@ -91,20 +91,20 @@
 	.toggle button {
 		padding: 0.45rem 1rem;
 		border: none;
-		background: #fff;
-		color: #1a7a3a;
+		background: var(--bg);
+		color: var(--green);
 		font: inherit;
 		font-weight: 600;
 		cursor: pointer;
 	}
 
 	.toggle button.active {
-		background: #1a7a3a;
+		background: var(--green);
 		color: #fff;
 	}
 
 	.summary {
-		color: #444;
+		color: var(--muted);
 		margin: 0 0 1.5rem;
 	}
 

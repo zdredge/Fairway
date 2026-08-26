@@ -26,7 +26,7 @@
 
 <div class="head">
 	<h1>Rounds</h1>
-	<a class="btn" href={resolve('/rounds/new')}>Start a round</a>
+	<a class="btn btn-primary" href={resolve('/rounds/new')}>Start a round</a>
 </div>
 
 {#if data.offline}
@@ -73,21 +73,14 @@
 <style>
 	.head {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
-	}
-
-	.btn {
-		background: #1a7a3a;
-		color: #fff;
-		padding: 0.5rem 0.9rem;
-		border-radius: 0.375rem;
-		text-decoration: none;
-		font-weight: 600;
+		gap: 0.5rem;
 	}
 
 	.empty {
-		color: #555;
+		color: var(--muted);
 	}
 
 	.rounds {
@@ -102,14 +95,14 @@
 	.rounds a {
 		display: block;
 		padding: 0.85rem 1rem;
-		border: 1px solid #e2e2e2;
-		border-radius: 0.5rem;
+		border: 1px solid var(--border-card);
+		border-radius: var(--radius);
 		text-decoration: none;
 		color: inherit;
 	}
 
 	.rounds a:hover {
-		border-color: #1a7a3a;
+		border-color: var(--green);
 	}
 
 	.top {
@@ -124,17 +117,17 @@
 	}
 
 	.badge {
-		background: #fff4d6;
-		color: #8a6100;
-		border-radius: 999px;
+		background: var(--amber-bg);
+		color: var(--amber-ink);
+		border-radius: var(--radius-pill);
 		padding: 0.1rem 0.55rem;
 		font-size: 0.8rem;
 		white-space: nowrap;
 	}
 
 	.badge.complete {
-		background: #e2f4e8;
-		color: #1a7a3a;
+		background: var(--green-tint);
+		color: var(--green);
 	}
 
 	.bottom {
@@ -146,7 +139,7 @@
 	}
 
 	.date {
-		color: #666;
+		color: var(--faint);
 		font-size: 0.9rem;
 	}
 
@@ -157,12 +150,12 @@
 
 	.score.muted {
 		font-weight: 400;
-		color: #666;
+		color: var(--faint);
 		font-size: 0.9rem;
 	}
 
 	.pending {
-		color: #8a6100;
+		color: var(--amber-ink);
 		font-weight: 600;
 	}
 
@@ -171,7 +164,7 @@
 		align-items: center;
 		gap: 0.4rem;
 		margin-top: 0.35rem;
-		color: #1a7a3a;
+		color: var(--green);
 		font-size: 0.8rem;
 		font-weight: 700;
 	}
@@ -180,6 +173,6 @@
 		width: 0.6rem;
 		height: 0.6rem;
 		border-radius: 50%;
-		background: #1a7a3a;
+		background: var(--green);
 	}
 </style>

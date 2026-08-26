@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { isGreenInRegulation } from '$lib/scoring/workflow';
+	import QuestionCard from '$lib/components/QuestionCard.svelte';
 	import type { ScoringFacts } from '$lib/types';
 
 	interface Props {
@@ -28,64 +29,47 @@
 	};
 </script>
 
-<div class="card">
-	<div class="context">Hole {holeNumber} · par {par}</div>
-	<h2>Review</h2>
-
-	<div class="score">
-		<span class="strokes">{facts.strokes}</span>
-		<span class="topar">{toParLabel}</span>
-	</div>
-
-	<dl class="summary">
-		<div>
-			<dt>Putts</dt>
-			<dd>{facts.putts}</dd>
+<QuestionCard question="Review" {holeNumber} {par} {onBack}>
+	<div class="review">
+		<div class="score">
+			<span class="strokes">{facts.strokes}</span>
+			<span class="topar">{toParLabel}</span>
 		</div>
-		<div>
-			<dt>Fairway</dt>
-			<dd>{fairwayLabels[facts.fairwayHit]}</dd>
-		</div>
-		<div>
-			<dt>GIR</dt>
-			<dd><span class="gir" class:yes={gir}>{gir ? 'Yes' : 'No'}</span></dd>
-		</div>
-	</dl>
 
-	{#if errors.length > 0}
-		<ul class="errors">
-			{#each errors as error (error)}
-				<li>{error}</li>
-			{/each}
-		</ul>
-	{/if}
+		<dl class="summary">
+			<div>
+				<dt>Putts</dt>
+				<dd>{facts.putts}</dd>
+			</div>
+			<div>
+				<dt>Fairway</dt>
+				<dd>{fairwayLabels[facts.fairwayHit]}</dd>
+			</div>
+			<div>
+				<dt>GIR</dt>
+				<dd><span class="gir" class:yes={gir}>{gir ? 'Yes' : 'No'}</span></dd>
+			</div>
+		</dl>
 
-	<div class="actions">
-		<button type="button" class="back" onclick={onBack}>← Back</button>
-		<button type="button" class="save" onclick={onSave} disabled={saving}>
+		{#if errors.length > 0}
+			<ul class="errors">
+				{#each errors as error (error)}
+					<li>{error}</li>
+				{/each}
+			</ul>
+		{/if}
+
+		<button type="button" class="btn btn-primary btn-block" onclick={onSave} disabled={saving}>
 			{saving ? 'Saving…' : 'Save hole'}
 		</button>
 	</div>
-</div>
+</QuestionCard>
 
 <style>
-	.card {
+	.review {
 		display: flex;
 		flex-direction: column;
 		gap: 1.25rem;
-	}
-
-	.context {
-		font-size: 0.85rem;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		color: #666;
-	}
-
-	h2 {
-		margin: 0;
-		font-size: 1.4rem;
-		text-align: center;
 	}
 
 	.score {
@@ -104,7 +88,7 @@
 	.topar {
 		font-size: 1.5rem;
 		font-weight: 600;
-		color: #666;
+		color: var(--faint);
 	}
 
 	.summary {
@@ -115,8 +99,8 @@
 	}
 
 	.summary div {
-		border: 1px solid #eee;
-		border-radius: 0.5rem;
+		border: 1px solid var(--border-light);
+		border-radius: var(--radius);
 		padding: 0.75rem;
 	}
 
@@ -124,7 +108,7 @@
 		font-size: 0.8rem;
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
-		color: #666;
+		color: var(--faint);
 	}
 
 	dd {
@@ -134,56 +118,15 @@
 
 	.gir {
 		display: inline-block;
-		background: #fdecea;
-		color: #a4231a;
-		border-radius: 999px;
+		background: var(--danger-bg);
+		color: var(--danger-ink);
+		border-radius: var(--radius-pill);
 		padding: 0.1rem 0.6rem;
 		font-size: 0.9rem;
 	}
 
 	.gir.yes {
-		background: #e2f4e8;
-		color: #1a7a3a;
-	}
-
-	.errors {
-		margin: 0;
-		padding: 0.75rem 1rem 0.75rem 2rem;
-		background: #fdecea;
-		border: 1px solid #f5c6c0;
-		border-radius: 0.375rem;
-		color: #a4231a;
-	}
-
-	.actions {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-
-	.back {
-		background: none;
-		border: none;
-		color: #1a7a3a;
-		font: inherit;
-		font-weight: 600;
-		cursor: pointer;
-		padding: 0;
-	}
-
-	.save {
-		background: #1a7a3a;
-		color: #fff;
-		border: none;
-		padding: 0.7rem 1.5rem;
-		border-radius: 0.375rem;
-		font: inherit;
-		font-weight: 600;
-		cursor: pointer;
-	}
-
-	.save:disabled {
-		opacity: 0.6;
-		cursor: default;
+		background: var(--green-tint);
+		color: var(--green);
 	}
 </style>

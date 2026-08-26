@@ -100,6 +100,11 @@
 			{/if}
 		</p>
 	</div>
+	{#if scoredCount === 0}
+		<p class="empty-hint">
+			No holes scored yet — tap “Score hole {nextHole}” below to start this round.
+		</p>
+	{/if}
 {/if}
 
 <Scorecard
@@ -113,10 +118,10 @@
 {#if !complete}
 	<div class="actions">
 		{#if nextHole !== undefined}
-			<a class="btn primary" href={holeHref(nextHole)}>Score hole {nextHole}</a>
+			<a class="btn btn-primary" href={holeHref(nextHole)}>Score hole {nextHole}</a>
 		{/if}
 		{#if allScored}
-			<button class="btn primary" onclick={finish} disabled={finishing}>
+			<button class="btn btn-primary" onclick={finish} disabled={finishing}>
 				{finishing ? 'Finishing…' : 'Finish round'}
 			</button>
 		{/if}
@@ -146,77 +151,61 @@
 	}
 
 	.badge {
-		background: #fff4d6;
-		color: #8a6100;
-		border-radius: 999px;
+		background: var(--amber-bg);
+		color: var(--amber-ink);
+		border-radius: var(--radius-pill);
 		padding: 0.15rem 0.6rem;
 		font-size: 0.85rem;
 		white-space: nowrap;
 	}
 
 	.badge.complete {
-		background: #e2f4e8;
-		color: #1a7a3a;
+		background: var(--green-tint);
+		color: var(--green);
 	}
 
 	.meta {
-		color: #666;
+		color: var(--faint);
 		margin: 0.25rem 0 1.25rem;
 	}
 
 	.bar {
 		height: 0.5rem;
-		background: #eee;
-		border-radius: 999px;
+		background: var(--border-light);
+		border-radius: var(--radius-pill);
 		overflow: hidden;
 	}
 
 	.bar span {
 		display: block;
 		height: 100%;
-		background: #1a7a3a;
+		background: var(--green);
 	}
 
 	.progress-text {
 		margin: 0.5rem 0 1.25rem;
-		color: #444;
+		color: var(--muted);
 		font-size: 0.95rem;
+	}
+
+	.empty-hint {
+		margin: 0 0 1.25rem;
+		color: var(--muted);
 	}
 
 	.actions {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 0.75rem;
 		margin-top: 1.5rem;
 	}
 
-	.btn {
-		padding: 0.6rem 1rem;
-		border-radius: 0.375rem;
-		text-decoration: none;
-		font: inherit;
-		font-weight: 600;
-		border: 1px solid #1a7a3a;
-		color: #1a7a3a;
-		background: #fff;
-		cursor: pointer;
-	}
-
-	.btn.primary {
-		background: #1a7a3a;
-		color: #fff;
-	}
-
-	.btn:disabled {
-		opacity: 0.6;
-		cursor: default;
-	}
-
 	.error {
-		color: #a4231a;
+		color: var(--danger-ink);
 	}
 
 	.note {
-		color: #8a6100;
+		color: var(--amber-ink);
 	}
 
 	.final {
@@ -229,7 +218,7 @@
 	}
 
 	.final a {
-		color: #1a7a3a;
+		color: var(--green);
 		font-weight: 600;
 		text-decoration: none;
 	}

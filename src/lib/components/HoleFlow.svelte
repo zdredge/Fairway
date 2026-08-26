@@ -148,7 +148,9 @@
 					<Stepper bind:value={puttsDraft} min={0} max={maxPutts(scoreDraft)} label="Putts" />
 				</div>
 			</div>
-			<button type="button" class="next" onclick={commitScorePutts}>Next</button>
+			<button type="button" class="btn btn-primary btn-block next" onclick={commitScorePutts}>
+				Next
+			</button>
 		</div>
 	</QuestionCard>
 {:else if step === 'fairway'}
@@ -175,8 +177,6 @@
 		display: flex;
 		flex-direction: column;
 		align-items: stretch;
-		width: fit-content;
-		margin: 0 auto;
 	}
 
 	.score-putts {
@@ -198,17 +198,8 @@
 	}
 
 	.next {
-		display: block;
-		width: 100%;
 		margin-top: 1.5rem;
 		padding: 0.85rem;
-		background: #1a7a3a;
-		color: #fff;
-		border: none;
-		border-radius: 0.5rem;
-		font: inherit;
 		font-size: 1.05rem;
-		font-weight: 600;
-		cursor: pointer;
 	}
 </style>

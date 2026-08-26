@@ -6,10 +6,12 @@
 
 <div class="head">
 	<h1>Courses</h1>
-	<a class="btn" href={resolve('/courses/new')}>New course</a>
+	<a class="btn btn-primary" href={resolve('/courses/new')}>New course</a>
 </div>
 
-{#if data.courses.length === 0}
+{#if data.offline}
+	<p class="empty">Your courses aren't available offline yet — reconnect to load them.</p>
+{:else if data.courses.length === 0}
 	<p class="empty">
 		No courses yet. <a href={resolve('/courses/new')}>Create your first course</a> to start tracking rounds.
 	</p>
@@ -31,17 +33,8 @@
 		justify-content: space-between;
 	}
 
-	.btn {
-		background: #1a7a3a;
-		color: #fff;
-		padding: 0.5rem 0.9rem;
-		border-radius: 0.375rem;
-		text-decoration: none;
-		font-weight: 600;
-	}
-
 	.empty {
-		color: #555;
+		color: var(--muted);
 	}
 
 	.courses {
@@ -55,7 +48,7 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: 0.75rem 0.25rem;
-		border-bottom: 1px solid #eee;
+		border-bottom: 1px solid var(--border-light);
 	}
 
 	.name {
@@ -63,7 +56,7 @@
 	}
 
 	.meta {
-		color: #666;
+		color: var(--faint);
 		font-size: 0.9rem;
 	}
 </style>

@@ -13,7 +13,7 @@
 </script>
 
 <div class="card">
-	<div class="context">Hole {holeNumber} · par {par}</div>
+	<div class="eyebrow">Hole {holeNumber} · par {par}</div>
 	{#if question}
 		<h2>{question}</h2>
 	{/if}
@@ -30,13 +30,6 @@
 		gap: 1.25rem;
 	}
 
-	.context {
-		font-size: 0.85rem;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		color: #666;
-	}
-
 	h2 {
 		margin: 0;
 		font-size: 1.4rem;
@@ -51,7 +44,7 @@
 		align-self: flex-start;
 		background: none;
 		border: none;
-		color: #1a7a3a;
+		color: var(--green);
 		font: inherit;
 		font-weight: 600;
 		cursor: pointer;

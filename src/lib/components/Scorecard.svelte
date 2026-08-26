@@ -74,57 +74,59 @@
 	}
 </script>
 
-<div class="wrap">
-	<table>
-		<thead>
-			<tr>
-				<th class="label">Hole</th>
-				{#each columns as col (colKey(col))}
-					{#if col.kind === 'hole'}
-						<th class="hole">
-							{#if interactive}
-								<a href={holeHref(col.n)}>{col.n}</a>
-							{:else}
-								{col.n}
-							{/if}
-						</th>
-					{:else}
-						<th class="seg">{col.label}</th>
-					{/if}
-				{/each}
-			</tr>
-		</thead>
-		<tbody>
-			<tr>
-				<th class="label">Par</th>
-				{#each columns as col (colKey(col))}
-					{#if col.kind === 'hole'}
-						<td>{parByHole.get(col.n)}</td>
-					{:else}
-						<td class="seg">{sumPar(col.from, col.to)}</td>
-					{/if}
-				{/each}
-			</tr>
-			<tr>
-				<th class="label">Score</th>
-				{#each columns as col (colKey(col))}
-					{#if col.kind === 'hole'}
-						{@const s = scoreByHole.get(col.n)}
-						<td>
-							{#if s}
-								<span class={markClass(s.strokes, parByHole.get(col.n) ?? 0)}>{s.strokes}</span>
-							{:else}
-								–
-							{/if}
-						</td>
-					{:else}
-						{@const t = sumField(col.from, col.to, 'strokes')}
-						<td class="seg">{t ?? ''}</td>
-					{/if}
-				{/each}
-			</tr>
-		</tbody>
-	</table>
+<div class="scorecard-scroll">
+	<div class="wrap">
+		<table>
+			<thead>
+				<tr>
+					<th class="label">Hole</th>
+					{#each columns as col (colKey(col))}
+						{#if col.kind === 'hole'}
+							<th class="hole">
+								{#if interactive}
+									<a href={holeHref(col.n)}>{col.n}</a>
+								{:else}
+									{col.n}
+								{/if}
+							</th>
+						{:else}
+							<th class="seg">{col.label}</th>
+						{/if}
+					{/each}
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<th class="label">Par</th>
+					{#each columns as col (colKey(col))}
+						{#if col.kind === 'hole'}
+							<td>{parByHole.get(col.n)}</td>
+						{:else}
+							<td class="seg">{sumPar(col.from, col.to)}</td>
+						{/if}
+					{/each}
+				</tr>
+				<tr>
+					<th class="label">Score</th>
+					{#each columns as col (colKey(col))}
+						{#if col.kind === 'hole'}
+							{@const s = scoreByHole.get(col.n)}
+							<td>
+								{#if s}
+									<span class={markClass(s.strokes, parByHole.get(col.n) ?? 0)}>{s.strokes}</span>
+								{:else}
+									–
+								{/if}
+							</td>
+						{:else}
+							{@const t = sumField(col.from, col.to, 'strokes')}
+							<td class="seg">{t ?? ''}</td>
+						{/if}
+					{/each}
+				</tr>
+			</tbody>
+		</table>
+	</div>
 </div>
 
 <div class="legend">
@@ -135,6 +137,22 @@
 </div>
 
 <style>
+	/* Relative parent holds a right-edge fade to hint the table scrolls sideways. */
+	.scorecard-scroll {
+		position: relative;
+	}
+
+	.scorecard-scroll::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		width: 1.5rem;
+		background: linear-gradient(to right, transparent, var(--bg));
+		pointer-events: none;
+	}
+
 	.wrap {
 		overflow-x: auto;
 		-webkit-overflow-scrolling: touch;
@@ -148,7 +166,7 @@
 
 	th,
 	td {
-		border: 1px solid #e2e2e2;
+		border: 1px solid var(--border-card);
 		padding: 0.4rem 0.6rem;
 		text-align: center;
 		min-width: 2.4rem;
@@ -166,24 +184,24 @@
 	}
 
 	.mark.circle {
-		border: 2px solid #c0392b;
+		border: 2px solid var(--mark-under);
 		border-radius: 50%;
 	}
 
 	.mark.square {
-		border: 2px solid #2c3e50;
+		border: 2px solid var(--mark-over);
 	}
 
 	.mark.circle.double {
 		box-shadow:
-			0 0 0 2px #fff,
-			0 0 0 4px #c0392b;
+			0 0 0 2px var(--bg),
+			0 0 0 4px var(--mark-under);
 	}
 
 	.mark.square.double {
 		box-shadow:
-			0 0 0 2px #fff,
-			0 0 0 4px #2c3e50;
+			0 0 0 2px var(--bg),
+			0 0 0 4px var(--mark-over);
 	}
 
 	/* Sticky row-label column so Par/Score/Putts stay visible while scrolling. */
@@ -192,27 +210,27 @@
 		left: 0;
 		text-align: left;
 		font-weight: 600;
-		background: #fff;
+		background: var(--bg);
 		z-index: 1;
 	}
 
 	thead th {
-		background: #f6faf7;
+		background: var(--green-head);
 		font-weight: 700;
 	}
 
 	thead .label {
-		background: #f6faf7;
+		background: var(--green-head);
 	}
 
 	.seg {
-		background: #f0f0f0;
+		background: var(--seg-bg);
 		font-weight: 700;
 	}
 
 	.hole a {
 		display: block;
-		color: #1a7a3a;
+		color: var(--green);
 		text-decoration: none;
 		font-weight: 700;
 	}
@@ -223,7 +241,7 @@
 		gap: 0.5rem 1.25rem;
 		margin-top: 0.85rem;
 		font-size: 0.8rem;
-		color: #555;
+		color: var(--muted);
 	}
 
 	.legend span {

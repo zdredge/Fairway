@@ -48,7 +48,7 @@
 		</ul>
 	{/if}
 
-	<button class="btn" type="submit" disabled={submitting}>
+	<button class="btn btn-primary" type="submit" disabled={submitting}>
 		{submitting ? 'Signing in…' : 'Sign in'}
 	</button>
 </form>
@@ -72,44 +72,22 @@
 
 	input {
 		padding: 0.45rem 0.5rem;
-		border: 1px solid #ccc;
-		border-radius: 0.375rem;
+		border: 1px solid var(--border-input);
+		border-radius: var(--radius-sm);
 		font: inherit;
-	}
-
-	.errors {
-		margin: 0;
-		padding: 0.75rem 1rem 0.75rem 2rem;
-		background: #fdecea;
-		border: 1px solid #f5c6c0;
-		border-radius: 0.375rem;
-		color: #a4231a;
 	}
 
 	.btn {
-		background: #1a7a3a;
-		color: #fff;
-		border: none;
-		padding: 0.6rem 1rem;
-		border-radius: 0.375rem;
-		font: inherit;
-		font-weight: 600;
-		cursor: pointer;
 		align-self: flex-start;
-	}
-
-	.btn:disabled {
-		opacity: 0.6;
-		cursor: default;
 	}
 
 	.alt {
 		margin-top: 1.25rem;
-		color: #555;
+		color: var(--muted);
 	}
 
 	.alt a {
-		color: #1a7a3a;
+		color: var(--green);
 		font-weight: 600;
 	}
 </style>
