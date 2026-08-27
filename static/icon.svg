@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Fairway">
+	<!-- Full-bleed background so the icon is safe as a maskable icon. -->
+	<rect width="512" height="512" fill="#1a7a3a" />
+	<!-- Putting green -->
+	<ellipse cx="256" cy="360" rx="150" ry="46" fill="#2e9d52" />
+	<!-- Flagpole -->
+	<rect x="300" y="150" width="12" height="212" rx="6" fill="#ffffff" />
+	<!-- Pennant -->
+	<path d="M312 158 L392 186 L312 214 Z" fill="#e23b3b" />
+	<!-- Ball -->
+	<circle cx="212" cy="356" r="20" fill="#ffffff" />
+</svg>

@@ -1,0 +1,121 @@
+/*
+ * Global design tokens + a few shared utility classes. Imported once from the
+ * root layout. Component styles reference these tokens (var(--…)) instead of
+ * hardcoding the palette; the utility classes replace blocks that were
+ * copy-pasted across many components (primary button, error box, the uppercase
+ * "eyebrow" label).
+ */
+
+:root {
+	/* Brand */
+	--green: #1a7a3a;
+	--green-hover: #166a33;
+	--green-tint: #e2f4e8;
+	--green-tint-hover: #d3eddc;
+	--green-head: #f6faf7; /* faint green table header */
+
+	/* Status / feedback */
+	--amber-bg: #fff4d6;
+	--amber-ink: #8a6100;
+	--danger-bg: #fdecea;
+	--danger-border: #f5c6c0;
+	--danger-ink: #a4231a;
+
+	/* Text */
+	--ink: #222;
+	--muted: #555;
+	--faint: #666;
+	--subtle: #999;
+
+	/* Surfaces / borders */
+	--bg: #fff;
+	--border: #ddd;
+	--border-card: #e2e2e2;
+	--border-light: #eee;
+	--border-input: #ccc;
+	--seg-bg: #f0f0f0; /* scorecard segment total cells */
+
+	/* Scorecard score marks */
+	--mark-under: #c0392b; /* birdie/eagle ring */
+	--mark-over: #2c3e50; /* bogey/double ring */
+
+	/* Shape */
+	--radius: 0.5rem;
+	--radius-sm: 0.375rem;
+	--radius-pill: 999px;
+
+	/* Layout */
+	--page-max: 40rem;
+}
+
+body {
+	margin: 0;
+	font-family: system-ui, sans-serif;
+	color: var(--ink);
+	background: var(--bg);
+}
+
+/* Uppercase context label used above cards / hole steps. */
+.eyebrow {
+	font-size: 0.85rem;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: var(--faint);
+}
+
+/* Buttons — .btn is the outlined green default; .btn-primary fills it; .btn-block
+   makes it full-width. Works as <button> or <a>. */
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.4rem;
+	box-sizing: border-box;
+	padding: 0.6rem 1rem;
+	border: 1px solid var(--green);
+	border-radius: var(--radius-sm);
+	background: var(--bg);
+	color: var(--green);
+	font: inherit;
+	font-weight: 600;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.btn:hover {
+	background: var(--green-tint);
+}
+
+.btn-primary {
+	background: var(--green);
+	border-color: var(--green);
+	color: #fff;
+}
+
+.btn-primary:hover {
+	background: var(--green-hover);
+}
+
+.btn-block {
+	display: flex;
+	width: 100%;
+}
+
+.btn:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+.btn-primary:disabled:hover {
+	background: var(--green);
+}
+
+/* Inline validation / error list shown under forms and the review step. */
+.errors {
+	margin: 0;
+	padding: 0.75rem 1rem 0.75rem 2rem;
+	background: var(--danger-bg);
+	border: 1px solid var(--danger-border);
+	border-radius: var(--radius-sm);
+	color: var(--danger-ink);
+}

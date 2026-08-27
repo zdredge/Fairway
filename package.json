@@ -3,6 +3,9 @@
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
+	"engines": {
+		"node": ">=22"
+	},
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
@@ -14,17 +17,22 @@
 		"format": "prettier --write .",
 		"db:push": "drizzle-kit push",
 		"db:generate": "drizzle-kit generate",
-		"db:migrate": "drizzle-kit migrate",
+		"db:migrate": "node scripts/migrate.mjs",
 		"db:seed": "tsx scripts/seed.ts",
+		"db:reset": "tsx scripts/reset-db.ts && npm run db:migrate && npm run db:seed",
+		"gen-icons": "tsx scripts/gen-icons.ts",
 		"db:check": "tsx scripts/check-db.ts",
-		"db:studio": "drizzle-kit studio"
+		"db:clear-rounds": "tsx scripts/clear-rounds.ts",
+		"api:smoke": "tsx scripts/smoke-api.ts",
+		"db:studio": "drizzle-kit studio",
+		"test:unit": "vitest",
+		"test": "npm run test:unit -- --run"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
-		"@sveltejs/adapter-node": "^5.5.7",
+		"@sveltejs/adapter-vercel": "^6.3.4",
 		"@sveltejs/kit": "^2.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
-		"@types/better-sqlite3": "^7.6.13",
 		"@types/node": "^24",
 		"dotenv": "^17.4.2",
 		"drizzle-kit": "^0.31.10",
@@ -34,15 +42,17 @@
 		"globals": "^17.6.0",
 		"prettier": "^3.8.3",
 		"prettier-plugin-svelte": "^4.1.0",
+		"sharp": "^0.35.3",
 		"svelte": "^5.56.1",
 		"svelte-check": "^4.6.0",
 		"tsx": "^4.23.1",
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.60.1",
-		"vite": "^8.0.16"
+		"vite": "^8.0.16",
+		"vitest": "^4.1.8"
 	},
 	"dependencies": {
-		"better-sqlite3": "^12.10.0",
+		"@libsql/client": "^0.17.4",
 		"drizzle-orm": "^0.45.2"
 	}
 }

@@ -14,7 +14,7 @@ In scope:
 - **Round lifecycle** — start a round on a saved course, 9 or 18 holes, track in-progress vs. complete.
 - **End-of-hole scoring workflow** — a fast, branching question flow (see below).
 - **Round history** — list of completed rounds, each openable to its scorecard.
-- **Stats dashboard** — scoring average, putts per round, fairways in regulation %, greens in regulation %, and scoring average by par-3 / par-4 / par-5.
+- **Stats dashboard** — scoring average, putts per round, fairways hit %, greens in regulation %, and scoring average by par-3 / par-4 / par-5.
 
 Out of scope for v1 (candidate enhancements):
 
@@ -56,10 +56,11 @@ Three stacked layers: the Svelte client (a PWA that buffers the in-progress roun
 
 ## Data model
 
-Five tables. Only raw captured facts are stored; anything derivable is computed on read.
+Six tables. Only raw captured facts are stored; anything derivable is computed on read.
 
-- **users** — `id`, `email`, `display_name`, `created_at`. Present from day one so multi-user isn't a painful retrofit later.
-- **courses** — `id`, `name`, `hole_count`, `created_at`.
+- **users** — `id`, `email`, `display_name`, `password_hash`, `created_at`. `password_hash` is `salt:key` from Node's built-in `crypto.scrypt` (no external hashing dependency).
+- **sessions** — `id`, `user_id` (FK), `expires_at`. The `id` is the SHA-256 of the token held in the cookie, so a leaked DB can't be used to impersonate sessions (Lucia-style, hand-rolled in `auth.ts`).
+- **courses** — `id`, `user_id` (FK), `name`, `hole_count`, `created_at`. Courses are owned per user (data is scoped to the signed-in account).
 - **holes** — `id`, `course_id` (FK), `number`, `par`, `yardage`. A separate table so courses are reusable without duplicating par data.
 - **rounds** — `id`, `user_id` (FK), `course_id` (FK), `tee`, `played_on`, `hole_count`, `status`. `hole_count` (9 or 18) lives on the round, not just the course, so a 9-hole round can be played on an 18-hole course.
 - **scoring** — `id`, `round_id` (FK), `hole_number`, `strokes`, `putts`, `fairway_hit`, `penalties`, `penalty_type`.
@@ -73,7 +74,7 @@ Five tables. Only raw captured facts are stored; anything derivable is computed 
 Derived, never stored:
 
 - **Greens in regulation** — `(strokes - putts) <= (par - 2)`.
-- **Fairways in regulation %**, **putts per round**, **scoring averages** — all aggregated in `stats.ts` from the raw scorings.
+- **Fairways hit %**, **putts per round**, **scoring averages** — all aggregated in `stats.ts` from the raw scorings. (Hitting a fairway is binary — unlike greens there's no "regulation" involved, so the stat is simply the percentage of fairways hit.)
 
 ## Scoring workflow (INSERT IMAGE)
 
@@ -147,6 +148,7 @@ Two placement decisions carry most of the weight. Everything under `lib/server/`
 
 | Method + path | Purpose |
 |---|---|
+| `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/logout` | Session auth — create account / sign in (set the session cookie) / sign out |
 | `POST /api/courses` and `GET /api/courses` | Create a reusable course; list saved courses |
 | `POST /api/rounds` | Start a round (course, tees, hole count) → returns round id |
 | `GET /api/rounds` | Round history for the dashboard |
@@ -157,9 +159,27 @@ Two placement decisions carry most of the weight. Everything under `lib/server/`
 
 There is deliberately no `/gir` endpoint and no stored fairway percentage — those are computed in `stats.ts` from the raw scorings, the same derive-don't-store discipline carried up from the data model into the API.
 
+Every data endpoint requires a valid session (`hooks.server.ts` resolves the session cookie into `locals.user`; handlers call `requireLogin`) and is scoped to that user; unauthenticated data calls get 401, and app pages redirect to `/login`. Only `/api/auth/*` is public.
+
 ## Offline strategy
 
 Golfers routinely lose signal mid-course, so the app must record holes without a live connection. v1 uses a pragmatic middle ground rather than full offline sync: the client buffers the in-progress round locally (IndexedDB, via the service worker) and submits scorings as connectivity allows, with the round safely recoverable if the app is backgrounded or closed. Full multi-device offline sync is a candidate enhancement, not a v1 requirement.
+
+**Service worker (`src/service-worker.ts`)** — precaches the app shell (cache-first) and runtime-caches API GETs, SvelteKit `__data.json`, and page navigations network-first, falling back to the last cached response. On a total cache miss the fallback depends on the request: an API/data GET gets a synthetic `503 {offline:true}` so it surfaces as a catchable `ApiError` rather than an uncaught fetch rejection, while a *navigation* request gets a small self-contained "You're offline" HTML page (a browser would render the JSON as raw text). Note this only applies to a hard load of a never-visited route; in-app client-side navigation instead runs the page's own load, whose data fetch gets the JSON `503` and renders the page's offline state. Registered only in production (`!dev`), so offline behavior is exercised via `npm run build && npm run preview`, not `vite dev`.
+
+**Write queue (`src/lib/offline/outbox.ts`)** — a durable IndexedDB queue of `score` and `complete` entries, keyed per-target so re-scoring a hole upserts in place. `saveScoring` writes through then tries the network (keeps the entry on network failure, drops + rethrows on a real server rejection); `queueComplete` enqueues a completion. `flush()` replays oldest-first and is drained from `+layout.svelte` on load and on the `online` event.
+
+**Read reconciliation (`src/lib/offline/merge.ts`, pure + unit-tested)** — loads overlay the outbox so offline state isn't stale: `mergeScorings` overlays queued holes onto a round's scorings (round detail, hole, and per-round stats pages); `applyPendingComplete` flips a round finished offline to `complete` (round detail + list); `overlayRoundSummary` adds a per-round `pendingSync` count to the history list. Exact list-level stroke totals are intentionally *not* recomputed offline (the summary lacks per-hole pars and can't dedupe re-scores) — the fully-merged scorecard on the round page is the accurate offline view, and totals reconcile on sync. The rounds list and aggregate `/stats` are the two loads that can't reconstruct from the outbox alone, so when their GET was never cached they render an "unavailable offline" notice instead of erroring.
+
+**Connection indicator (`src/lib/offline/status.ts`, `OfflineIndicator.svelte`)** — a small app-wide banner driven by `navigator.onLine` / the `online`/`offline` events plus the outbox count: shows "Offline — N change(s) will sync…" when disconnected and "Syncing N…" while draining a backlog, hidden when online with an empty queue.
+
+**Current round (`src/lib/offline/activeRound.ts`, `pickCurrentRoundId` in `merge.ts`)** — "the in-progress round you're playing" is tracked in a `localStorage`-backed store, set whenever a round detail/hole page is viewed in progress and cleared when it completes or on sign-out (so it survives a reload and never leaks between users). It drives a global "Resume round · {course}" pill in `+layout.svelte` — shown whenever there's an active round and the current path isn't already that round's, so the user can always get back to it (client-side + cached → works offline). The rounds list marks the same round with a "Current Round" badge via the pure `pickCurrentRoundId(rounds, activeId)` (prefers the active round, else the most-recent in-progress; never a completed one).
+
+Creation of new rounds/courses while offline is out of scope for now — it needs client-generated temp ids and an id-remap step in `flush()` (a later phase); today those POSTs require a connection.
+
+## Deployment
+
+The app deploys to **Vercel** (free Hobby tier) via `@sveltejs/adapter-vercel`, pinned to the **Node runtime** so server code can use `node:crypto` (scrypt) — not the Edge runtime. The database is **Turso** (hosted **libSQL**), reached with `@libsql/client` + `drizzle-orm/libsql`. libSQL is the SQLite dialect, so the Drizzle schema and the committed `drizzle/` migrations are unchanged from local dev; `DATABASE_URL` is simply a local `file:` URL in dev, `:memory:` in tests, and a `libsql://…turso.io` URL (with `TURSO_AUTH_TOKEN`) in prod. The one driver-specific spot is `createCourse`, whose transaction is `async` (libSQL, unlike better-sqlite3, has no synchronous transaction API). Migrations are applied from a developer machine against Turso via `scripts/migrate.mjs` (Drizzle's libSQL migrator) — serverless has no boot hook. Config is two env vars in the Vercel project (`DATABASE_URL`, `TURSO_AUTH_TOKEN`); Vercel serves HTTPS, which the secure session cookie requires. This split (managed serverless host + hosted libSQL) keeps the app stateless and free, at the cost of occasional serverless cold starts.
 
 ## Future enhancements
 

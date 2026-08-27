@@ -1,8 +1,10 @@
 CREATE TABLE `courses` (
 	`id` text PRIMARY KEY NOT NULL,
+	`user_id` text NOT NULL,
 	`name` text NOT NULL,
 	`hole_count` integer NOT NULL,
-	`created_at` integer NOT NULL
+	`created_at` integer NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE TABLE `holes` (
@@ -40,10 +42,18 @@ CREATE TABLE `scoring` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `scoring_round_hole_idx` ON `scoring` (`round_id`,`hole_number`);--> statement-breakpoint
+CREATE TABLE `sessions` (
+	`id` text PRIMARY KEY NOT NULL,
+	`user_id` text NOT NULL,
+	`expires_at` integer NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
 CREATE TABLE `users` (
 	`id` text PRIMARY KEY NOT NULL,
 	`email` text NOT NULL,
 	`display_name` text NOT NULL,
+	`password_hash` text NOT NULL,
 	`created_at` integer NOT NULL
 );
 --> statement-breakpoint
