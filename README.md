@@ -6,14 +6,14 @@ A simple, fast golf round tracker: log each hole through a streamlined end-of-ho
 
 ## Demo
 
-- Live: _coming soon_
+- Live: https://fairway-vert-pi.vercel.app/
 - Screenshots: _coming soon_
 
 ## Features (v1)
 
 - Create reusable courses (name, per-hole par, yardage)
 - Start and track 9 or 18-hole rounds
-- Fast, branching end-of-hole scoring — fairway, putts, penalties, score — surfacing only the follow-ups that matter (miss direction, penalty type)
+- Fast, branching end-of-hole scoring — fairway, putts, score — surfacing only the follow-ups that matter (miss direction)
 - Automatic derivations (greens in regulation, fairways hit, and more) computed from raw data, never manually entered
 - Round history and per-round scorecards
 - Stats dashboard: scoring average, putts/round, fairways hit %, GIR%, and scoring by par type
@@ -45,33 +45,6 @@ Handy scripts: `npm test` (unit), `npm run check` (types), `npm run lint`. The P
 worker only runs in a production build, which happens on Vercel (the Vercel adapter's build
 uses symlinks that Windows blocks without Developer Mode) — test the installable PWA on the
 deployed URL, or build on WSL/macOS/Linux.
-
-## Deploy (Vercel + Turso)
-
-Deploys on Vercel's free tier via `@sveltejs/adapter-vercel` (Node runtime), with the database
-on **Turso** (hosted libSQL — same SQLite dialect, so the `drizzle/` migrations apply as-is).
-
-1. **Turso** — create the database and a token (both free):
-   ```bash
-   turso auth login
-   turso db create fairway
-   turso db show fairway --url        # → libsql://<db>.turso.io
-   turso db tokens create fairway     # → auth token
-   ```
-2. **Apply migrations to Turso** (from your machine; there's no boot step on serverless).
-   PowerShell:
-   ```powershell
-   $env:DATABASE_URL = "libsql://<db>.turso.io"; $env:TURSO_AUTH_TOKEN = "<token>"; npm run db:migrate
-   ```
-3. **Vercel** — import the GitHub repo in the Vercel dashboard, set project env vars
-   `DATABASE_URL` (the `libsql://` URL) and `TURSO_AUTH_TOKEN`, and deploy (pushes auto-deploy).
-
-Create your account by **signing up in the app** — no seed is shipped to production. Vercel
-serves HTTPS, which the app needs for its secure session cookie.
-
-> Note: `npm run build` uses the Vercel adapter and creates symlinks, which Windows blocks
-> without Developer Mode — build locally on WSL/macOS/Linux, or just let Vercel build on push.
-> Local development (`npm run dev`) is unaffected.
 
 ## Architecture
 
