@@ -50,7 +50,7 @@ async function seed() {
 	if (existingCourse) {
 		console.log(`Sample course already present: ${existingCourse.name}`);
 	} else {
-		const course = createCourse({
+		const course = await createCourse({
 			userId: user.id,
 			name: SAMPLE_COURSE_NAME,
 			holes: SAMPLE_HOLES.map(([par, yardage], i) => ({ number: i + 1, par, yardage }))

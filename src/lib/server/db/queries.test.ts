@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test } from 'vitest';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { migrate } from 'drizzle-orm/libsql/migrator';
 import { count, eq } from 'drizzle-orm';
 import { db } from './index';
 import { courses, holes, scoring } from './schema';
@@ -18,8 +18,8 @@ import {
 // The real committed migrations, applied to the in-memory DB from
 // vitest-setup.server.ts — so these tests exercise drizzle/0000_init.sql,
 // not a parallel schema definition.
-beforeAll(() => {
-	migrate(db, { migrationsFolder: 'drizzle' });
+beforeAll(async () => {
+	await migrate(db, { migrationsFolder: 'drizzle' });
 });
 
 const threeHoles = [
@@ -27,6 +27,17 @@ const threeHoles = [
 	{ number: 1, par: 3, yardage: 160 },
 	{ number: 3, par: 5 } // yardage optional
 ];
+
+// libSQL surfaces a SQLite UNIQUE violation through Drizzle as a "Failed query: …"
+// error with the "UNIQUE constraint failed" text on `.cause`, so assert on the chain.
+async function expectUniqueViolation(promise: Promise<unknown>) {
+	const err = (await promise.then(
+		() => null,
+		(e) => e
+	)) as (Error & { cause?: Error }) | null;
+	expect(err, 'expected the query to reject').toBeTruthy();
+	expect(`${err?.message ?? ''} | ${err?.cause?.message ?? ''}`).toMatch(/UNIQUE/i);
+}
 
 let userSeq = 0;
 function makeUser() {
@@ -39,7 +50,7 @@ function makeUser() {
 
 async function makeRound() {
 	const user = await makeUser();
-	const course = createCourse({ userId: user.id, name: 'Round Course', holes: threeHoles });
+	const course = await createCourse({ userId: user.id, name: 'Round Course', holes: threeHoles });
 	const round = await createRound({ userId: user.id, courseId: course.id, holeCount: 3 });
 	return { user, course, round };
 }
@@ -57,16 +68,16 @@ describe('users', () => {
 
 	test('duplicate email is rejected', async () => {
 		await createUser({ email: 'dupe@test.local', displayName: 'First', passwordHash: 'salt:hash' });
-		await expect(
+		await expectUniqueViolation(
 			createUser({ email: 'dupe@test.local', displayName: 'Second', passwordHash: 'salt:hash' })
-		).rejects.toThrow(/UNIQUE/i);
+		);
 	});
 });
 
 describe('courses', () => {
 	test('createCourse → getCourse round-trips holes in number order', async () => {
 		const user = await makeUser();
-		const created = createCourse({ userId: user.id, name: 'Trip Course', holes: threeHoles });
+		const created = await createCourse({ userId: user.id, name: 'Trip Course', holes: threeHoles });
 		expect(created.holeCount).toBe(3);
 
 		const fetched = await getCourse(created.id);
@@ -79,7 +90,7 @@ describe('courses', () => {
 	test('listCourses is scoped to the owner', async () => {
 		const a = await makeUser();
 		const b = await makeUser();
-		createCourse({ userId: a.id, name: "A's course", holes: threeHoles });
+		await createCourse({ userId: a.id, name: "A's course", holes: threeHoles });
 
 		expect((await listCourses(a.id)).map((c) => c.name)).toEqual(["A's course"]);
 		expect(await listCourses(b.id)).toEqual([]);
@@ -87,15 +98,23 @@ describe('courses', () => {
 
 	test('duplicate hole number within a course is rejected', async () => {
 		const user = await makeUser();
-		const course = createCourse({ userId: user.id, name: 'Dupe Hole Course', holes: threeHoles });
-		await expect(
+		const course = await createCourse({
+			userId: user.id,
+			name: 'Dupe Hole Course',
+			holes: threeHoles
+		});
+		await expectUniqueViolation(
 			db.insert(holes).values({ courseId: course.id, number: 1, par: 4 })
-		).rejects.toThrow(/UNIQUE/i);
+		);
 	});
 
 	test('deleting a course cascades to its holes', async () => {
 		const user = await makeUser();
-		const course = createCourse({ userId: user.id, name: 'Doomed Course', holes: threeHoles });
+		const course = await createCourse({
+			userId: user.id,
+			name: 'Doomed Course',
+			holes: threeHoles
+		});
 		await db.delete(courses).where(eq(courses.id, course.id));
 		const [remaining] = await db
 			.select({ n: count() })

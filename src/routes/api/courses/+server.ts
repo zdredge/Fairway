@@ -12,7 +12,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const user = requireLogin(locals);
 	const input = validateCourseInput(user.id, await readJsonBody(request));
-	const course = createCourse(input);
+	const course = await createCourse(input);
 	return json(course, { status: 201 });
 };
 

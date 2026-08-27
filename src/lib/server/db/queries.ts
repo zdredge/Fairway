@@ -66,18 +66,16 @@ export interface CreateCourseInput {
 
 export type CourseWithHoles = Course & { holes: Hole[] };
 
-export function createCourse(input: CreateCourseInput): CourseWithHoles {
-	return db.transaction((tx) => {
-		const course = tx
+export async function createCourse(input: CreateCourseInput): Promise<CourseWithHoles> {
+	return db.transaction(async (tx) => {
+		const [course] = await tx
 			.insert(courses)
 			.values({ userId: input.userId, name: input.name, holeCount: input.holes.length })
-			.returning()
-			.get();
-		const courseHoles = tx
+			.returning();
+		const courseHoles = await tx
 			.insert(holes)
 			.values(input.holes.map((hole) => ({ ...hole, courseId: course.id })))
-			.returning()
-			.all();
+			.returning();
 		return { ...course, holes: courseHoles };
 	});
 }

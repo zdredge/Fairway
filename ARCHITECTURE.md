@@ -177,6 +177,10 @@ Golfers routinely lose signal mid-course, so the app must record holes without a
 
 Creation of new rounds/courses while offline is out of scope for now — it needs client-generated temp ids and an id-remap step in `flush()` (a later phase); today those POSTs require a connection.
 
+## Deployment
+
+The app deploys to **Vercel** (free Hobby tier) via `@sveltejs/adapter-vercel`, pinned to the **Node runtime** so server code can use `node:crypto` (scrypt) — not the Edge runtime. The database is **Turso** (hosted **libSQL**), reached with `@libsql/client` + `drizzle-orm/libsql`. libSQL is the SQLite dialect, so the Drizzle schema and the committed `drizzle/` migrations are unchanged from local dev; `DATABASE_URL` is simply a local `file:` URL in dev, `:memory:` in tests, and a `libsql://…turso.io` URL (with `TURSO_AUTH_TOKEN`) in prod. The one driver-specific spot is `createCourse`, whose transaction is `async` (libSQL, unlike better-sqlite3, has no synchronous transaction API). Migrations are applied from a developer machine against Turso via `scripts/migrate.mjs` (Drizzle's libSQL migrator) — serverless has no boot hook. Config is two env vars in the Vercel project (`DATABASE_URL`, `TURSO_AUTH_TOKEN`); Vercel serves HTTPS, which the secure session cookie requires. This split (managed serverless host + hosted libSQL) keeps the app stateless and free, at the cost of occasional serverless cold starts.
+
 ## Future enhancements
 
 - Simplified, clearly-labeled handicap estimate, then full World Handicap System.
