@@ -28,15 +28,15 @@ Out of scope for v1 (candidate enhancements):
 |---|---|---|
 | Frontend + backend | SvelteKit (Svelte 5, TypeScript) | One coherent full-stack codebase; server endpoints, form actions, and deploy in one project. |
 | Data access | Drizzle ORM | Lightweight, type-safe; maps cleanly onto the relational model. |
-| Database | SQLite (dev) then Postgres (prod) | Zero-setup locally; production-grade in deployment; adapter-swappable. |
+| Database | libSQL (`@libsql/client`) — a local file in dev, **Turso** in prod | SQLite dialect end-to-end; zero-setup locally, hosted + free in production, one driver for both. |
 | Auth | Session-based (Lucia-style) | Demonstrates auth without over-scoping v1. |
 | Delivery (v1) | PWA (installable, offline-capable) | A shareable live URL — one tap for a reviewer, no install friction. |
 | Delivery (later) | Capacitor (native Android/iOS shell) | Same client, wrapped; unlocks native GPS for future rangefinder work. |
-| Deploy | SvelteKit adapter-node | Adapter system allows retargeting Vercel / Node / Cloudflare via config. |
+| Deploy | SvelteKit `adapter-vercel` (Vercel, Node runtime) | Managed serverless host on a free tier; the adapter system still allows retargeting Node / Cloudflare via config. |
 
 ## Delivery model
 
-v1 ships as a PWA served by the SvelteKit Node build, which both renders the app and hosts the API. To keep the door open to a native app, **all data access goes through `/api` route handlers** rather than only through form actions and load functions. That one discipline means the same client source can later be built static and wrapped with Capacitor, calling the same hosted API over HTTPS. The only additional concern at that point is CORS, handled in `hooks.server.ts`.
+v1 ships as a PWA deployed on Vercel, where the same SvelteKit app (Node runtime) both renders the UI and hosts the API. To keep the door open to a native app, **all data access goes through `/api` route handlers** rather than only through form actions and load functions. That one discipline means the same client source can later be built static and wrapped with Capacitor, calling the same hosted API over HTTPS. The only additional concern at that point is CORS, handled in `hooks.server.ts`.
 
 ## System diagram
 
@@ -44,8 +44,8 @@ v1 ships as a PWA served by the SvelteKit Node build, which both renders the app
 flowchart TD
     client["Client (Svelte UI)<br/>PWA · offline round buffer"]
     capacitor["Capacitor<br/>static build → Android"]
-    server["SvelteKit app (Node)<br/>/api · auth · stats + GIR"]
-    db["Database<br/>SQLite → Postgres"]
+    server["SvelteKit on Vercel (Node)<br/>/api · auth · stats + GIR"]
+    db["libSQL<br/>file (dev) · Turso (prod)"]
 
     client <-->|"HTTPS · JSON"| server
     server -->|"Drizzle"| db
@@ -69,37 +69,36 @@ Six tables. Only raw captured facts are stored; anything derivable is computed o
 
 - `fairway_hit` — enum: `hit`, `left`, `right`, `long`, `short`, `na`. `na` on par 3s (no fairway to hit); a miss records its direction.
 - `penalties` — integer count of penalty strokes taken on the hole.
-- `penalty_type` — nullable enum: `out_of_bounds`, `water_hazard`, `lost_ball`, `unplayable`. Null when there is no penalty. Captured so penalties can eventually be scored *correctly* (each type carries a different stroke rule).
+- `penalty_type` — nullable enum: `out_of_bounds`, `water_hazard`, `lost_ball`, `unplayable`. Null when there is no penalty.
+
+> The v1 scoring flow does not yet capture penalties — these two columns always store `0` / `null` today. They're kept in the schema (and validated) so penalties can later be scored *correctly* (each type carries a different stroke rule) without a migration.
 
 Derived, never stored:
 
 - **Greens in regulation** — `(strokes - putts) <= (par - 2)`.
 - **Fairways hit %**, **putts per round**, **scoring averages** — all aggregated in `stats.ts` from the raw scorings. (Hitting a fairway is binary — unlike greens there's no "regulation" involved, so the stat is simply the percentage of fairways hit.)
 
-## Scoring workflow (INSERT IMAGE)
+## Scoring workflow
 
-The end-of-hole flow is a single path with two optional spurs, so the golfer's mental model never forks. On a clean par-4/5 it's three questions; the branches only cost extra taps when something actually happened.
+The end-of-hole flow is a single short path with one optional step, so the golfer's mental model never forks. A par 4/5 is three quick screens; a par 3 is two (the fairway step is skipped).
 
 Flow:
 
-1. **Par 3?** — a branch the app already knows from the hole's par (not a question). On a par 3, skip the fairway question and open on putts.
-2. **Did you hit the fairway?** (par 4/5 only) — yes continues; **no** triggers a *miss-direction* follow-up (`left` / `right` / `long` / `short`).
-3. **How many putts?** — always asked.
-4. **Any penalties?** — no continues; **yes** triggers a *penalty-type* follow-up.
-5. **Final score?** — asked last, so it can be validated against what came before.
-6. **Review & save** — summary (including auto-derived GIR), then save and advance.
+1. **Score + putts** — one screen with two steppers, captured first. The putts stepper is capped at `strokes − 1` (every stroke but the tee shot could be a putt), so putts can't outrun the score and the GIR derivation stays sane.
+2. **Fairway hit?** (par 4/5 only — the app knows the par, so it's not a question on par 3s) — a spatial pad whose centre is "hit" and whose four sides record a miss direction (`left` / `right` / `long` / `short`).
+3. **Review & save** — a summary with auto-derived GIR, then save and advance. Re-scoring a hole reopens on this screen, prefilled.
 
-Input controls follow a consistent design language: binary questions are vertical Yes/No stacks, counts (putts, score) are steppers, direction is a spatial pad, and categories (penalty type) are vertical lists.
+Input controls share a consistent design language: counts (score, putts) are steppers, and the fairway result is a spatial pad.
 
-**Score validation** — because putts and penalties are captured first, the final score has a hard floor:
+**Validation** — enforced on the score+putts screen and again on submit:
 
 ```
-final score >= putts + penalties + 1
+putts (+ penalties) <= strokes − 1
 ```
 
-The one guaranteed non-putt stroke is the tee shot. The stepper defaults to par (or the floor, if the floor exceeds par) and won't drop below the floor. This also protects the GIR derivation, which produces nonsense if score is ever below putts.
+The one guaranteed non-putt stroke is the tee shot, so putts can't exceed `strokes − 1` — which also protects the GIR derivation (nonsense if putts exceed strokes). Penalties are part of this rule but are always `0` in v1 (not captured — see the data model). A par 3 must record `na` for the fairway; a par 4/5 must record a real result.
 
-The workflow branching and this validation live in `src/lib/scoring/workflow.ts`, imported by both the client (to drive the UI) and the server (to enforce integrity on submit) — written once, enforced in both places.
+The workflow branching and validation live in `src/lib/scoring/workflow.ts` (`currentStep`, `maxPutts`, `isGreenInRegulation`, `validateScoring`), imported by both the client (to drive the UI) and the server (to enforce integrity on submit) — written once, enforced in both places.
 
 ## Project structure
 
@@ -115,9 +114,10 @@ golf-app/
 │  │  │  ├─ auth.ts               # session validation
 │  │  │  └─ stats.ts              # aggregation + GIR derivation
 │  │  ├─ scoring/
-│  │  │  └─ workflow.ts           # branching flow + score-floor validation (shared)
+│  │  │  └─ workflow.ts           # branching flow + putts-cap validation + GIR (shared)
+│  │  ├─ offline/                 # PWA sync: outbox (IndexedDB), merge, status, activeRound
 │  │  ├─ types.ts                 # shared TS types (Round, Scoring, HoleResult…)
-│  │  └─ components/              # QuestionCard, Stepper, DirectionPad, ReviewCard…
+│  │  └─ components/              # QuestionCard, Stepper, FairwayPad, ReviewCard, Scorecard…
 │  ├─ routes/
 │  │  ├─ +layout.svelte
 │  │  ├─ +page.svelte             # home / dashboard
@@ -136,9 +136,9 @@ golf-app/
 │  ├─ hooks.server.ts             # session auth + CORS (for the Capacitor origin later)
 │  └─ service-worker.ts           # offline caching
 ├─ static/manifest.webmanifest    # PWA install
-├─ scripts/                       # seed + db-check scripts (npm run db:seed / db:check)
+├─ scripts/                       # seed / migrate / db-check scripts (npm run db:seed / db:migrate / db:check)
 ├─ drizzle.config.ts
-├─ vite.config.ts                 # SvelteKit config lives here (new template style); adapter-node now, adapter-static later
+├─ vite.config.ts                 # SvelteKit config lives here (new template style); adapter-vercel
 └─ package.json
 ```
 

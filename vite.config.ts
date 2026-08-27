@@ -1,6 +1,6 @@
 // Load .env into process.env for the dev server's SSR runtime. The db client
 // reads process.env (not $env) so the same module works under tsx scripts and
-// Vitest; in production, adapter-node takes env from the host environment.
+// Vitest; in production, adapter-vercel supplies env from the Vercel project.
 import 'dotenv/config';
 import { defineConfig } from 'vitest/config';
 import adapter from '@sveltejs/adapter-vercel';

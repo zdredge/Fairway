@@ -2,8 +2,10 @@
 
 A phased plan for implementing v1. Each phase is a self-contained, reviewable increment ending in something runnable, so progress can be checked between phases. Phases are ordered to build the most-depended-on, most-testable pieces first (data and pure logic) and to defer cross-cutting concerns (auth, offline) until the core loop works end to end.
 
+> **Status — v1 shipped.** This is the plan as originally conceived; a few things evolved in the build: penalties were dropped from the scoring UI (the columns remain, unused), the database + host landed on **Turso (libSQL) + Vercel** rather than Postgres, and phases 8–9 grew sub-phases (8.1/8.2 offline reads/finish + current-round UI; 9a UI polish; 9b deploy). See **README.md** and **ARCHITECTURE.md** for the shipped app.
+
 ## Phase 0 — Scaffold & tooling
-- SvelteKit (Svelte 5, TS), adapter-node, ESLint/Prettier, base layout and routing shell.
+- SvelteKit (Svelte 5, TS), adapter-node (later moved to adapter-vercel), ESLint/Prettier, base layout and routing shell.
 - Drizzle wired to SQLite; `.env.example`; npm scripts (`dev`, `db:migrate`, `db:seed`).
 - PWA manifest stub (not yet functional offline).
 - **Done when:** `npm run dev` serves a blank app shell and the DB connection succeeds.
@@ -49,5 +51,5 @@ A phased plan for implementing v1. Each phase is a self-contained, reviewable in
 
 ## Phase 9 — Polish & deploy
 - The deferred visual-alignment pass on the scoring screens; empty/error/loading states; responsive check on a phone viewport.
-- Swap SQLite → Postgres via config; deploy; add the live URL and screenshots to the README.
+- Deploy on Vercel (`adapter-vercel`) with the database on Turso (hosted libSQL) — kept on the SQLite dialect, no Postgres port. Add the live URL and screenshots to the README.
 - **Done when:** it's deployed, shareable by link, and the README shows it off.
