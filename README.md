@@ -6,8 +6,13 @@ A simple, fast golf round tracker: log each hole through a streamlined end-of-ho
 
 ## Demo
 
-- Live: https://fairway-vert-pi.vercel.app/
-- Screenshots: _coming soon_
+## Demo
+
+**Live:** https://fairway-vert-pi.vercel.app/
+
+| Rounds | Scorecard | Stats |
+| :---: | :---: | :---: |
+| ![Rounds screen](screenshots/RoundsSS.png "Rounds Screen") | ![Scorecard screen](screenshots/ScorecardSS.png "Scorecard Screen") | ![Stats screen](screenshots/StatsSS.png "Stats Screen") |
 
 ## Features (v1)
 
